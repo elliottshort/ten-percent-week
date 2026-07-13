@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>I backtested the ten percent week</title><meta name="description" content="Someone pitched a weekly options trade that supposedly makes 10% a week. I rebuilt it, ran it on six years of options data across 16 stocks, and tried to tune it until it worked."></head><body><title>I backtested the ten percent week</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>I backtested the ten percent week</title><meta name="description" content="You sent me a trade that makes 10% a week. I backtested it: 16 stocks, six years of options data, 3,456 configurations."></head><body><title>I backtested the ten percent week</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&display=swap" rel="stylesheet">
@@ -212,7 +212,7 @@
 <section class="hero col">
   <p class="kicker reveal">16 stocks &middot; 6 years &middot; 3,456 backtests</p>
   <h1 class="reveal" style="--d:.08s">I backtested the <em>ten percent week</em></h1>
-  <p class="standfirst reveal" style="--d:.16s">Someone sent me a screenshot pitching a weekly options trade on NVDA: buy a deep in-the-money call, sell one at the money against it, and collect 10% a week even if the stock goes nowhere. Instead of arguing about it, I rebuilt the trade and ran it against six years of real options data on sixteen stocks. Then I spent 3,456 more backtests trying to tune it until it worked. Everything I found is on this page.</p>
+  <p class="standfirst reveal" style="--d:.16s">You sent me the NVDA trade: buy a deep in-the-money call, sell one at the money against it, collect 10% a week even if the stock goes nowhere. I rebuilt it and ran it against six years of options data on sixteen stocks, then spent 3,456 more backtests trying to tune it until it worked. This is what I found.</p>
   <div class="verdict reveal" style="--d:.26s">
     <div><span class="n bad num">13 / 16</span><small>accounts that went to zero trading it exactly as pitched, 2020&ndash;2025</small></div>
     <div><span class="n bad num">0 / 16</span><small>stocks where any survivable version of it beat just holding the shares</small></div>
@@ -224,9 +224,9 @@
 <section class="sec col" id="pitch">
   <span class="secno" aria-hidden="true">01</span>
   <h2 class="reveal">What the trade actually is</h2>
-  <p class="dek reveal">The claims first, stated as generously as I can, because the arithmetic in the screenshot does check out.</p>
-  <p class="reveal">With NVDA at <span class="num">$210.96</span>, you buy the deep in-the-money <span class="num">$160</span> call for <span class="num">$5,027</span> and sell the at-the-money <span class="num">$210</span> call for <span class="num">$475</span> against it, both expiring in about a week. Net cost: <span class="num">$4,528</span> per contract set. If NVDA finishes anywhere above $210, the spread pays its full <span class="num">$5,000</span> width. That&rsquo;s a <strong class="num">+10.4%</strong> return in seven days, and you collect it even if the stock doesn&rsquo;t move. The pitch says to repeat weekly, compound $45k into $50k, and keep harvesting &ldquo;volatility premium&rdquo; forever.</p>
-  <p class="reveal">All of that is true. The screenshot just never shows you the left side of the payoff.</p>
+  <p class="dek reveal">The claims first, because the arithmetic in your screenshot does check out.</p>
+  <p class="reveal">With NVDA at <span class="num">$210.96</span>, you buy the deep in-the-money <span class="num">$160</span> call for <span class="num">$5,027</span> and sell the at-the-money <span class="num">$210</span> call for <span class="num">$475</span> against it, both expiring in about a week. Net cost: <span class="num">$4,528</span> per contract set. If NVDA finishes anywhere above $210, the spread pays its full <span class="num">$5,000</span> width. That&rsquo;s a <strong class="num">+10.4%</strong> return in seven days, collected even if the stock doesn&rsquo;t move. Repeat weekly, compound $45k into $50k, harvest &ldquo;volatility premium&rdquo; forever.</p>
+  <p class="reveal">All of that is true. Your screenshot just never shows the left side of the payoff.</p>
   <aside class="note reveal">The long $160 call carries almost no time value. It&rsquo;s a stock substitute with delta &asymp; 1, which makes the position <b>levered long NVDA at ~4.7&times;</b> with the upside capped at +10.4%.</aside>
 
   <figure class="reveal">
@@ -300,9 +300,9 @@
 <section class="sec col" id="nocovid">
   <span class="secno" aria-hidden="true">05</span>
   <h2 class="reveal">What if we just skip COVID?</h2>
-  <p class="dek reveal">Fair objection: the account died in March 2020, so maybe this whole study is a COVID artifact. I reran everything starting January 2023.</p>
+  <p class="dek reveal">I know your objection: the account died in March 2020, so it&rsquo;s all COVID. Fine. I reran everything starting January 2023.</p>
   <p class="reveal">This is the friendliest window the trade could ask for. No crash, three years of mostly-up market, and NVDA more than doubling every year. Even here, <strong>two of the sixteen all-in accounts still went to zero</strong>: AMD on July 26, 2024 and INTC two weeks later, both killed by an ordinary summer semiconductor selloff, no crisis anywhere in sight. The other fourteen survived with drawdowns between 24% and 92% along the way.</p>
-  <p class="reveal">The surviving all-in accounts did post huge numbers where the stock ripped: <span class="num">+396%</span> a year on NVDA, <span class="num">+142%</span> on AMZN, <span class="num">+125%</span> on MSFT. Before that looks like vindication, remember what the position is. A 4.7&times; levered long in a bull market prints money because it&rsquo;s levered, not because it&rsquo;s harvesting anything; a margin account would have done the same job. The same structure lost 23&ndash;42% a year on XOM, PFE, BA and DIS over the same period, and the &ldquo;harvest&rdquo; framing is nowhere in either outcome.</p>
+  <p class="reveal">The surviving all-in accounts did post huge numbers where the stock ripped: <span class="num">+396%</span> a year on NVDA, <span class="num">+142%</span> on AMZN, <span class="num">+125%</span> on MSFT. Before you call that vindication, remember what the position is. A 4.7&times; levered long prints money in a bull market because it&rsquo;s levered, not because it&rsquo;s harvesting anything. A margin account does the same job. The same structure lost 23&ndash;42% a year on XOM, PFE, BA and DIS over the same period.</p>
   <p class="reveal">Sized down to 25% so it can actually survive, the trade lost to buy-and-hold on <strong>15 of 16 names</strong> even in this window, with a median of <span class="num">+12.9%</span> against <span class="num">+29.6%</span>. The one win is PFE, where capping your upside happens to help because the stock went down. That&rsquo;s the covered-call effect, which you can get without any of the leverage.</p>
 
   <figure class="reveal">
@@ -338,7 +338,7 @@
       <p>Holding the shares beat every harvest configuration I tested, and that&rsquo;s before real-world fills get worse than mid-quote.</p>
     </div>
   </div>
-  <p class="reveal" style="margin-top:34px">The 10% week is the maximum payoff of a bet, not a yield. To be fair to the pitch, 61% of NVDA cycles did pay in full, and the median fortnight was positive. None of that mattered, because one ordinary bad fortnight erases months of harvesting, and the sizing that makes the returns exciting is the same sizing that makes the damage permanent. After 3,456 attempts to find a version of this trade worth running, I can tell you it comes in two flavors: the ones that eventually blow up, and the ones that underperform a covered call.</p>
+  <p class="reveal" style="margin-top:34px">The 10% week is the maximum payoff of a bet, not a yield. To be fair to the pitch, 61% of NVDA cycles did pay in full, and the median fortnight was positive. None of that mattered, because one ordinary bad fortnight erases months of harvesting, and the sizing that makes the returns exciting is the same sizing that makes the damage permanent. After 3,456 attempts to find a version of your trade worth running, I can tell you it comes in two flavors: the ones that eventually blow up, and the ones that underperform a covered call.</p>
 </section>
 
 <section class="sec col" id="method">
@@ -377,7 +377,7 @@
     </article>
     <article class="reveal">
       <h3>What this data can&rsquo;t test</h3>
-      <p>Three things. <b>True 7-day cycles:</b> no sub-13-DTE quotes exist in the source. <b>Mid-cycle exits or stops:</b> a position opened at 14 DTE has no quotes once it decays below the source&rsquo;s floor, so everything is held to expiry. A stop-loss would change the shape of the returns, but you have to price one to claim it helps, not assume it. <b>The GEX overlay:</b> the pitch pairs this trade with dealer-gamma dashboards, and I have no historical dealer-positioning data to test timing with. I&rsquo;ll note that a timing signal changes how often you hold the position, not what the payoff does to you when you&rsquo;re wrong.</p>
+      <p>Three things. <b>True 7-day cycles:</b> no sub-13-DTE quotes exist in the source. <b>Mid-cycle exits or stops:</b> a position opened at 14 DTE has no quotes once it decays below the source&rsquo;s floor, so everything is held to expiry. A stop-loss would change the shape of the returns, but you have to price one to claim it helps, not assume it. <b>The GEX overlay:</b> your screenshots pair this trade with dealer-gamma dashboards, and I have no historical dealer-positioning data to test timing with. I&rsquo;ll note that a timing signal changes how often you hold the position, not what the payoff does to you when you&rsquo;re wrong.</p>
     </article>
     <article class="reveal">
       <h3>Reproducing it</h3>
