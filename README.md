@@ -1,6 +1,7 @@
-# The Ten-Percent Week
+# I backtested the ten percent week
 
-A backtest autopsy of a viral "volatility harvesting" options pitch — deep-ITM/ATM call verticals
-on NVDA and 15 other large caps, 2020–2025, plus a 108-configuration in-sample/out-of-sample sweep.
+A viral options pitch claimed 10% a week from deep-ITM/ATM call verticals. I rebuilt the trade,
+ran it on 16 large caps over 2020-2025, then swept 108 parameter configurations with an
+in-sample/out-of-sample split to see if any version of it holds up.
 
 Live page: https://elliottshort.github.io/ten-percent-week/

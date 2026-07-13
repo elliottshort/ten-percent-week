@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>The Ten-Percent Week — a backtest autopsy</title><meta name="description" content="A viral options pitch promised 10% a week harvesting volatility on NVDA. Six years of data, 16 stocks, and 3,456 backtests say otherwise."></head><body><title>The Ten-Percent Week</title>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>I backtested the ten percent week</title><meta name="description" content="Someone pitched a weekly options trade that supposedly makes 10% a week. I rebuilt it, ran it on six years of options data across 16 stocks, and tried to tune it until it worked."></head><body><title>I backtested the ten percent week</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&display=swap" rel="stylesheet">
@@ -56,7 +56,7 @@
   h1 {
     font-family: var(--serif-d); font-weight: 340; font-variation-settings: "opsz" 130;
     font-size: clamp(44px, 8.2vw, 96px); line-height: 1.0; letter-spacing: -0.015em; margin: 0 0 28px;
-    max-width: 12ch;
+    max-width: 14ch;
   }
   h1 em { font-style: italic; font-weight: 420; color: var(--red-text); }
   .standfirst {
@@ -203,176 +203,176 @@
 <div id="tip" role="tooltip"></div>
 
 <header class="masthead">
-  <span>Buywrite-Backtest Research &middot; July 2026</span>
+  <span>Elliott Short &middot; backtest notes &middot; July 2026</span>
   <nav aria-label="Sections">
-    <a href="#pitch">The pitch</a><a href="#wipeout">The wipeout</a><a href="#sixteen">Sixteen names</a><a href="#sweep">The sweep</a><a href="#verdict">Verdict</a><a href="#method">Method</a>
+    <a href="#pitch">The trade</a><a href="#wipeout">The wipeout</a><a href="#sixteen">The other 15</a><a href="#sweep">The sweep</a><a href="#verdict">Verdict</a><a href="#method">Method</a>
   </nav>
 </header>
 
 <section class="hero col">
-  <p class="kicker reveal">A backtest autopsy in five acts</p>
-  <h1 class="reveal" style="--d:.08s">The ten-percent week that <em>wasn&rsquo;t</em></h1>
-  <p class="standfirst reveal" style="--d:.16s">A screenshot promised a &ldquo;volatility harvest&rdquo; on NVDA — ten percent a week, paid even if the stock goes nowhere. We rebuilt the trade from the pitch, ran it through six years of options data on sixteen stocks, then spent 3,456 more backtests trying to tune it into working. This page is the full record.</p>
+  <p class="kicker reveal">16 stocks &middot; 6 years &middot; 3,456 backtests</p>
+  <h1 class="reveal" style="--d:.08s">I backtested the <em>ten percent week</em></h1>
+  <p class="standfirst reveal" style="--d:.16s">Someone sent me a screenshot pitching a weekly options trade on NVDA: buy a deep in-the-money call, sell one at the money against it, and collect 10% a week even if the stock goes nowhere. Instead of arguing about it, I rebuilt the trade and ran it against six years of real options data on sixteen stocks. Then I spent 3,456 more backtests trying to tune it until it worked. Everything I found is on this page.</p>
   <div class="verdict reveal" style="--d:.26s">
-    <div><span class="n bad num">13 / 16</span><small>accounts wiped out when traded exactly as pitched, 2020&ndash;2025</small></div>
-    <div><span class="n bad num">0 / 16</span><small>names where any survivable sizing beat simply owning the stock</small></div>
-    <div><span class="n num">108</span><small>parameter configurations swept, tuned in-sample, validated out-of-sample</small></div>
-    <div><span class="n num">1</span><small>strategy left standing &mdash; and it&rsquo;s the boring one the pitch was dressed up as</small></div>
+    <div><span class="n bad num">13 / 16</span><small>accounts that went to zero trading it exactly as pitched, 2020&ndash;2025</small></div>
+    <div><span class="n bad num">0 / 16</span><small>stocks where any survivable version of it beat just holding the shares</small></div>
+    <div><span class="n num">108</span><small>parameter combinations tested, tuned on 2020&ndash;2022 and judged on 2023&ndash;2025</small></div>
+    <div><span class="n num">1</span><small>strategy that held up. It&rsquo;s a plain covered call.</small></div>
   </div>
 </section>
 
 <section class="sec col" id="pitch">
   <span class="secno" aria-hidden="true">01</span>
-  <h2 class="reveal">The pitch, taken seriously</h2>
-  <p class="dek reveal">Before testing a trade you have to steelman it. Here is exactly what was claimed, and exactly what the position is.</p>
-  <p class="reveal">With NVDA at <span class="num">$210.96</span>, the trade buys the deep in-the-money <span class="num">$160</span> call for <span class="num">$5,027</span> and sells the at-the-money <span class="num">$210</span> call for <span class="num">$475</span> against it, both expiring in about a week. Net cost: <span class="num">$4,528</span> per contract set. If NVDA finishes anywhere above $210, the spread pays its full <span class="num">$5,000</span> width &mdash; a <strong class="num">+10.4%</strong> return in seven days, collected <em>even if the stock doesn&rsquo;t move</em>. The pitch: repeat weekly, compound $45k into $50k, harvest &ldquo;volatility premium&rdquo; forever.</p>
-  <p class="reveal">All of that is arithmetically true. The part the screenshot doesn&rsquo;t show is the left side of the payoff.</p>
-  <aside class="note reveal">The long $160 call carries almost no time value &mdash; it is a stock surrogate with delta &asymp; 1. The position is <b>levered long NVDA ~4.7&times;</b> with upside capped at +10.4%.</aside>
+  <h2 class="reveal">What the trade actually is</h2>
+  <p class="dek reveal">The claims first, stated as generously as I can, because the arithmetic in the screenshot does check out.</p>
+  <p class="reveal">With NVDA at <span class="num">$210.96</span>, you buy the deep in-the-money <span class="num">$160</span> call for <span class="num">$5,027</span> and sell the at-the-money <span class="num">$210</span> call for <span class="num">$475</span> against it, both expiring in about a week. Net cost: <span class="num">$4,528</span> per contract set. If NVDA finishes anywhere above $210, the spread pays its full <span class="num">$5,000</span> width. That&rsquo;s a <strong class="num">+10.4%</strong> return in seven days, and you collect it even if the stock doesn&rsquo;t move. The pitch says to repeat weekly, compound $45k into $50k, and keep harvesting &ldquo;volatility premium&rdquo; forever.</p>
+  <p class="reveal">All of that is true. The screenshot just never shows you the left side of the payoff.</p>
+  <aside class="note reveal">The long $160 call carries almost no time value. It&rsquo;s a stock substitute with delta &asymp; 1, which makes the position <b>levered long NVDA at ~4.7&times;</b> with the upside capped at +10.4%.</aside>
 
   <figure class="reveal">
-    <p class="fig-title">Fig. 1 &mdash; What the trade actually is: payoff at expiry, one contract set</p>
+    <p class="fig-title">Fig. 1 &middot; Payoff at expiry, one contract set</p>
     <p class="fig-sub">Buy 160C / sell 210C for a $4,528 debit, NVDA at $210.96 &middot; hover for P&amp;L at any price</p>
     <div class="chartwrap" id="payoff"></div>
-    <figcaption>Above $210 the spread is worth its full $5,000 width (+10.4%). Below the $205.28 breakeven &mdash; a 2.7% dip &mdash; losses run at roughly 4.7&times; the stock&rsquo;s move. At $160, a 24% drawdown for NVDA, the position is worth exactly zero.</figcaption>
+    <figcaption>Above $210 the spread is worth its full $5,000 width (+10.4%). Below the $205.28 breakeven, a 2.7% dip, you lose at roughly 4.7&times; the stock&rsquo;s move. At $160, which is a 24% drawdown for NVDA, the position is worth exactly zero.</figcaption>
   </figure>
 
-  <p class="reveal">The premium is real. It is not free: it is the market&rsquo;s price for insuring a levered position against exactly the kind of week that, as we&rsquo;re about to see, arrives on schedule.</p>
+  <p class="reveal">So the premium is real, but you&rsquo;re not harvesting it for free. You&rsquo;re getting paid to insure a levered position against a bad week. The rest of this page is about how often the bad week shows up.</p>
 </section>
 
 <section class="sec col" id="wipeout">
   <span class="secno" aria-hidden="true">02</span>
-  <h2 class="reveal">Seven weeks to zero</h2>
-  <p class="dek reveal">We ran the trade as pitched &mdash; full account redeployed every cycle &mdash; starting January 2020 with $100,000.</p>
-  <p class="reveal">Our options source lists no expiries under ~13 days, so cycles run about two weeks instead of the pitched seven days &mdash; same structure, same economics, half the compounding events (details in the <a href="#method">methodology</a>). The first two cycles are the screenshot come to life: <strong class="num">+19.3%</strong>, then <strong class="num">+32.5%</strong>. Fifty-eight percent up in a month. Then February 2020 ends.</p>
+  <h2 class="reveal">It lasted seven weeks</h2>
+  <p class="dek reveal">I ran the trade as pitched, full account redeployed every cycle, starting January 2020 with $100,000.</p>
+  <p class="reveal">My options source doesn&rsquo;t carry expiries under ~13 days, so cycles run about two weeks instead of seven days. Same structure, same economics, half the compounding events (details in the <a href="#method">methodology</a>). The first two cycles delivered exactly what the screenshot promised: <strong class="num">+19.3%</strong>, then <strong class="num">+32.5%</strong>, up 58% in about a month. The account didn&rsquo;t survive February.</p>
 
   <div class="cycles reveal" id="cyclestrip"></div>
 
   <figure class="reveal">
-    <p class="fig-title">Fig. 2 &mdash; NVDA, $100k, 2020&ndash;2025 (log scale)</p>
+    <p class="fig-title">Fig. 2 &middot; NVDA, $100k, 2020&ndash;2025 (log scale)</p>
     <p class="fig-sub">As-pitched all-in sizing vs. quarter sizing vs. owning the shares &middot; mid-quote fills</p>
     <div class="legend" id="eqlegend"></div>
     <div class="chartwrap" id="eqchart"></div>
-    <figcaption>The all-in line dies on March 20, 2020 with $15 left of $100,000 &mdash; and NVDA went on to return thirty-fold. Sized to a quarter of equity per cycle so it can survive, the harvest compounds at 31.4%&hellip; against 77.4% for doing nothing but holding the stock.</figcaption>
+    <figcaption>The all-in line ends on March 20, 2020 with $15 left of $100,000. NVDA went on to return thirty-fold from there. Cut to a quarter of equity per cycle so it can survive, the same trade compounds at 31.4%, against 77.4% for holding the stock and doing nothing.</figcaption>
   </figure>
 
-  <p class="reveal">Note what killed it. Not a market apocalypse &mdash; a <span class="redline">&minus;22.7% fortnight</span>, an event NVDA has delivered many times since. With a &minus;2.7% breakeven and ~4.7&times; leverage, the position converts a bad-but-ordinary two weeks into a total loss. Redeploying the full account each cycle guarantees the first such fortnight is the last.</p>
+  <p class="reveal">And look at what killed it. Not some once-a-century crash. NVDA dropped <span class="redline">22.7% over two weeks</span>, which it has done plenty of times since. With breakeven at &minus;2.7% and roughly 4.7&times; leverage, one bad-but-ordinary stretch takes the whole account, and betting the full balance every cycle means your first bad fortnight is your last.</p>
 </section>
 
 <section class="sec col" id="sixteen">
   <span class="secno" aria-hidden="true">03</span>
-  <h2 class="reveal">Sixteen names, one mechanism</h2>
-  <p class="dek reveal">Maybe NVDA was unlucky. We ran the identical strategy on fifteen more large caps.</p>
-  <p class="reveal">Thirteen of sixteen all-in accounts were ruined outright. The three &ldquo;survivors&rdquo; &mdash; AMZN, WMT, CSCO &mdash; drew down <span class="num">89&ndash;98%</span> and survived on a technicality. And it is not a COVID story: <strong>NFLX sailed through March 2020 untouched and died on a single earnings gap in January 2022.</strong> Restarted in January 2021, skipping the crash entirely, five names still went to zero &mdash; AMD and BA in 2022, INTC in 2024, DIS in April 2025.</p>
+  <h2 class="reveal">The other fifteen stocks</h2>
+  <p class="dek reveal">Maybe NVDA was just unlucky, so I ran the identical strategy on fifteen more large caps.</p>
+  <p class="reveal">Thirteen of the sixteen all-in accounts went to zero. The three &ldquo;survivors&rdquo; (AMZN, WMT, CSCO) drew down <span class="num">89&ndash;98%</span> along the way, which I&rsquo;d call surviving on a technicality. You can&rsquo;t blame COVID for this either: <strong>NFLX sailed through March 2020 untouched and then died on a single earnings gap in January 2022.</strong> I also restarted every account in January 2021, skipping the crash entirely, and five names still went to zero: AMD and BA in 2022, INTC in 2024, DIS in April 2025.</p>
 
   <figure class="reveal">
-    <p class="fig-title">Fig. 3 &mdash; Survivable sizing still loses everywhere</p>
+    <p class="fig-title">Fig. 3 &middot; Even at survivable sizing, it loses everywhere</p>
     <p class="fig-sub">CAGR 2020&ndash;2025, harvest at 25% of equity per cycle vs. buy &amp; hold &middot; hover any row</p>
     <div class="legend"><span><span class="sw dot" style="background:var(--blue)"></span><b>Harvest, 25% sizing</b></span><span><span class="sw dot" style="background:var(--ink-3)"></span><b>Buy &amp; hold</b></span></div>
     <div class="chartwrap scrollx" id="dumbbell"></div>
-    <figcaption>Zero of sixteen names end to the right of their own stock. In the four names where the stock itself went nowhere or down (PFE, BA, DIS, INTC) &mdash; the regime premium-selling is supposed to own &mdash; the harvest did <em>worse than the falling stock</em>.</figcaption>
+    <figcaption>Zero of sixteen names end to the right of their own stock. The part that surprised me: in the four names where the stock itself went nowhere or down (PFE, BA, DIS, INTC), which is exactly the market premium-selling is supposed to win in, the harvest did <em>worse than the falling stock</em>.</figcaption>
   </figure>
 
   <figure class="reveal">
-    <p class="fig-title">Table 1 &mdash; The all-in autopsy, name by name</p>
+    <p class="fig-title">Table 1 &middot; Every account, name by name</p>
     <p class="fig-sub">Traded exactly as pitched: full equity per cycle, mid fills, 2020&ndash;2025</p>
     <div class="scrollx"><table id="autopsy"></table></div>
-    <figcaption>&ldquo;Worst cycle&rdquo; is the harvest&rsquo;s worst single two-week return at 25% sizing &mdash; at full sizing, multiply by four and cap at &minus;100%.</figcaption>
+    <figcaption>&ldquo;Worst cycle&rdquo; is the worst single two-week return at 25% sizing. At full sizing, multiply by four and cap at &minus;100%.</figcaption>
   </figure>
 </section>
 
 <section class="sec col" id="sweep">
   <span class="secno" aria-hidden="true">04</span>
-  <h2 class="reveal">Trying to tune it into working</h2>
-  <p class="dek reveal">&ldquo;Adjust any variables needed.&rdquo; We did &mdash; 108 configurations, with a wall between the data that picks the winner and the data that judges it.</p>
-  <p class="reveal">We swept every lever the trade has: long-leg depth (76 / 85 / 92% of spot), short strike (at-the-money or 5% out), expiry (two weeks or a month), sizing (25 / 50 / 100% of equity), and two principled entry filters &mdash; skip earnings fortnights, and a causal trend gate. Each configuration was <strong>tuned on 2020&ndash;2022 and validated on 2023&ndash;2025</strong> with fresh capital, across all sixteen names. Tuning and judging on the same years is how pitches like this get manufactured; the split is what makes &ldquo;predictably profitable&rdquo; mean something.</p>
+  <h2 class="reveal">Then I tried to fix it</h2>
+  <p class="dek reveal">108 configurations, with a wall between the years that pick the winner and the years that judge it.</p>
+  <p class="reveal">I swept every lever the trade has: long-leg depth (76 / 85 / 92% of spot), short strike (at the money or 5% out), expiry (two weeks or a month), sizing (25 / 50 / 100% of equity), and two entry filters with an actual rationale behind them, skipping earnings fortnights and gating on trend. Every configuration got <strong>tuned on 2020&ndash;2022 and judged on 2023&ndash;2025</strong> with fresh capital, across all sixteen names. If you let a strategy tune and grade itself on the same years, you can manufacture any result you want. That&rsquo;s how pitches like this get made in the first place.</p>
 
   <figure class="reveal">
-    <p class="fig-title">Fig. 4 &mdash; Does in-sample tuning predict out-of-sample results?</p>
-    <p class="fig-sub">Each dot is one configuration: median CAGR across 16 names, tuned window vs. validation window &middot; hover any dot</p>
+    <p class="fig-title">Fig. 4 &middot; Does in-sample tuning predict out-of-sample results?</p>
+    <p class="fig-sub">Each dot is one configuration: median CAGR across 16 names, tuning window vs. validation window &middot; hover any dot</p>
     <div class="chartwrap scrollx" id="scatter"></div>
-    <figcaption>The left gutter is the graveyard: 39 configurations &mdash; every full-sizing variant, the as-pitched trade among them &mdash; ruined in-sample, with out-of-sample fates scattered from &minus;100% to +38% by pure luck. Among survivable configs the tuning signal collapses: Spearman rank correlation is 0.58 overall but <b>0.20 once sizing is held fixed</b>. Almost everything &ldquo;learned&rdquo; was: don&rsquo;t use leverage.</figcaption>
+    <figcaption>The left gutter holds 39 configurations that went to zero in-sample, every full-sizing variant and the as-pitched trade among them, with out-of-sample results scattered from &minus;100% to +38% on pure luck. Among the survivable configs the tuning signal mostly disappears: Spearman rank correlation is 0.58 overall but <b>0.20 once you hold sizing fixed</b>. Nearly everything the sweep &ldquo;learned&rdquo; was: don&rsquo;t use leverage.</figcaption>
   </figure>
 
-  <p class="reveal">The best defensible configuration &mdash; 92%-moneyness long leg, monthly expiry, quarter sizing, no filter &mdash; earned <span class="num">+7.3%</span> in-sample and <span class="num">+26.1%</span> out-of-sample. Look at what each &ldquo;refinement&rdquo; did: <em>less</em> leverage, <em>longer</em> cycles, <em>smaller</em> size. The sweep, asked to maximize returns, spent 3,456 backtests walking the strategy back toward a plain covered call.</p>
-  <aside class="note reveal">The configs that did best out-of-sample (+33&ndash;40%) all had negative or ruinous in-sample records. Picking them now would be hindsight, not refinement.</aside>
+  <p class="reveal">The best configuration I&rsquo;d actually defend (92%-moneyness long leg, monthly expiry, quarter sizing, no filter) earned <span class="num">+7.3%</span> in-sample and <span class="num">+26.1%</span> out-of-sample. Look at what each &ldquo;refinement&rdquo; did, though: <em>less</em> leverage, <em>longer</em> cycles, <em>smaller</em> size. I asked the sweep to maximize returns and it spent 3,456 backtests turning the strategy back into a plain covered call.</p>
+  <aside class="note reveal">The configs that did best out-of-sample (+33&ndash;40%) all had negative or ruinous in-sample records. Picking those now would just be hindsight.</aside>
 </section>
 
 <section class="sec col" id="verdict">
   <span class="secno" aria-hidden="true">05</span>
-  <h2 class="reveal">The verdict</h2>
+  <h2 class="reveal">Where that leaves things</h2>
   <p class="dek reveal">Out-of-sample, 2023&ndash;2025, median across sixteen names.</p>
   <div class="h2h reveal">
     <div>
       <div class="who"><span class="sw" style="background:var(--blue)"></span>Refined harvest</div>
       <div class="big num">+26.1%</div>
       <div class="dd num">median max drawdown &minus;53%</div>
-      <p>The sweep&rsquo;s best in-sample pick: 92% moneyness, monthly, quarter-sized. Trails the index with triple the pain.</p>
+      <p>The sweep&rsquo;s best in-sample pick: 92% moneyness, monthly, quarter-sized. Earns less than the stocks and draws down three times deeper.</p>
     </div>
     <div class="pick">
       <div class="who"><span class="sw" style="background:var(--aqua)"></span>Covered call &middot; unlevered</div>
       <div class="big num">+20.7%</div>
       <div class="dd num">median max drawdown &minus;17.8%</div>
-      <p>Same premium stream, no ruin state. Below the strike you just own cheaper stock. This is what the pitch was, minus the leverage.</p>
+      <p>Same premium, no way to blow up. Below the strike you just own cheaper stock. This is the trade the pitch was dressed up as.</p>
     </div>
     <div>
       <div class="who"><span class="sw" style="background:var(--ink-3)"></span>Buy &amp; hold</div>
       <div class="big num">+29.0%</div>
       <div class="dd num">ordinary equity drawdowns</div>
-      <p>Doing nothing beat every harvest configuration tested, before a single real-world fill got worse than mid.</p>
+      <p>Holding the shares beat every harvest configuration I tested, and that&rsquo;s before real-world fills get worse than mid-quote.</p>
     </div>
   </div>
-  <p class="reveal" style="margin-top:34px">The 10% week is the <em>maximum payoff of a bet</em>, not a yield. Sixty-one percent of NVDA cycles did pay in full &mdash; the median fortnight was genuinely positive &mdash; and none of it mattered, because one ordinary bad fortnight erases months and the sizing that makes the returns exciting makes the erasure permanent. Every version of this trade is either ruin-bound or a worse covered call. There is no third setting.</p>
+  <p class="reveal" style="margin-top:34px">The 10% week is the maximum payoff of a bet, not a yield. To be fair to the pitch, 61% of NVDA cycles did pay in full, and the median fortnight was positive. None of that mattered, because one ordinary bad fortnight erases months of harvesting, and the sizing that makes the returns exciting is the same sizing that makes the damage permanent. After 3,456 attempts to find a version of this trade worth running, I can tell you it comes in two flavors: the ones that eventually blow up, and the ones that underperform a covered call.</p>
 </section>
 
 <section class="sec col" id="method">
   <span class="secno" aria-hidden="true">06</span>
-  <h2 class="reveal">Methodology, in full</h2>
-  <p class="dek reveal">Every number above is reproducible from the repository. Here is exactly how they were made, including what this data cannot test.</p>
+  <h2 class="reveal">How I ran all of this</h2>
+  <p class="dek reveal">Every number above is reproducible from the repo. This is how they were made, including what this data can&rsquo;t test.</p>
   <div class="metho">
     <article class="reveal">
       <h3>Data</h3>
-      <p>Option chains from the DoltHub <code>post-no-preference/options</code> dataset: near-daily snapshots with bid, ask, IV and delta. Each snapshot carries roughly three expirations (~2, ~4, ~7 weeks; nothing under ~13 days to expiry) and strikes within about &plusmn;30% of spot. Underlying closes, dividends, splits and earnings dates from Yahoo Finance; the 13-week T-bill (<code>^IRX</code>) as the cash rate. Everything is cached to SQLite (~52,000 chain snapshots across 16 symbols); every run after the first is fully offline.</p>
+      <p>Option chains come from the DoltHub <code>post-no-preference/options</code> dataset: near-daily snapshots with bid, ask, IV and delta. Each snapshot carries roughly three expirations (~2, ~4, ~7 weeks, nothing under ~13 days out) and strikes within about &plusmn;30% of spot. Underlying closes, dividends, splits and earnings dates come from Yahoo Finance, with the 13-week T-bill (<code>^IRX</code>) as the cash rate. I cache all of it to SQLite (~52,000 chain snapshots across 16 symbols), so every run after the first is fully offline.</p>
     </article>
     <article class="reveal">
       <h3>Reconstructing the trade</h3>
-      <p>Each cycle buys the call nearest 76% of spot (clamped to the deepest listed strike) and sells the call nearest the money, same expiry, at mid-quote. Positions are held to expiry, settled at intrinsic value against the closing price, and re-entered the same day. Contracts are floored to whole units; idle cash earns nothing (conservative for the sized variants). A second fill model pays 25% of the half-spread on each leg; it costs the strategy 2&ndash;6 CAGR points and changes no conclusion. Real two-legged weekly fills would be worse than either.</p>
+      <p>Each cycle buys the call nearest 76% of spot (clamped to the deepest listed strike) and sells the call nearest the money, same expiry, at mid-quote. I hold to expiry, settle at intrinsic value against the closing price, and re-enter the same day. Contracts get floored to whole units, and idle cash earns nothing, which if anything flatters the sized variants less. I also ran a second fill model that pays 25% of the half-spread on each leg. It costs the strategy 2&ndash;6 CAGR points and changes no conclusion. Real two-legged weekly fills would be worse than either.</p>
     </article>
     <article class="reveal">
       <h3>The one adaptation</h3>
-      <p>The pitch uses 7-day expiries; the dataset&rsquo;s shortest is ~14 days. Cycles therefore run two weeks &mdash; the identical structure with half the compounding events and, per unit time, a slightly <em>gentler</em> gamma profile than the true weekly. If anything, this flatters the pitch: the weekly version meets one more coin-flip per month.</p>
+      <p>The pitch uses 7-day expiries and the dataset&rsquo;s shortest is ~14 days, so my cycles run two weeks. It&rsquo;s the identical structure with half the compounding events and a slightly gentler risk profile per unit of time. If anything that flatters the pitch, since the true weekly version meets one more coin flip every month.</p>
     </article>
     <article class="reveal">
-      <h3>Splits, and a trap worth documenting</h3>
-      <p>Strikes are as-traded on their date; cached closes are split-adjusted to the present. Engines back-adjust strikes with the cumulative product of splits <em>after</em> each date. Corollary discovered mid-study: you cannot date-slice the price series for windowed tests, because splits occurring after the window end (NVDA 10:1 in 2024, WMT 3:1 in 2024, NFLX 10:1 in 2025) are baked into the closes but invisible to the slice. Our first sweep pass silently dropped those three names in-sample; the published numbers gate entries by date on full-period data instead. If you build backtests, steal this lesson.</p>
+      <h3>Splits, and a trap I fell into</h3>
+      <p>Strikes are as-traded on their date, while cached closes are split-adjusted to the present, so the engine back-adjusts strikes with the cumulative product of splits after each date. Here&rsquo;s the trap: you can&rsquo;t date-slice the price series for windowed tests, because splits that happen after the window ends (NVDA 10:1 in 2024, WMT 3:1 in 2024, NFLX 10:1 in 2025) are baked into the closes but invisible to the slice. My first sweep pass silently dropped those three names in-sample before I caught it. The published numbers gate entries by date on full-period data instead. If you build backtests, watch for this one.</p>
     </article>
     <article class="reveal">
-      <h3>Ruin, precisely</h3>
-      <p>An account is ruined when it can no longer fund a single contract of the next cycle. All-in NVDA: $100,000 &rarr; $15 in four cycles (Jan 24 &ndash; Mar 20, 2020). Annualizing a six-week &minus;100% is meaningless, so ruined runs are reported as ruin dates, not CAGRs.</p>
+      <h3>What counts as ruin</h3>
+      <p>An account is ruined when it can no longer fund a single contract of the next cycle. All-in NVDA went from $100,000 to $15 in four cycles (Jan 24 to Mar 20, 2020). Annualizing a six-week &minus;100% produces nonsense, so I report ruined runs as ruin dates, not CAGRs.</p>
     </article>
     <article class="reveal">
       <h3>The sweep protocol</h3>
       <ul>
         <li><b>Grid:</b> moneyness {76, 85, 92%} &times; short strike {ATM, 105%} &times; expiry {~14d, ~28d} &times; sizing {25, 50, 100%} &times; filter {none, skip-earnings, skip-earnings + trend gate} = 108 configs.</li>
-        <li><b>Filters are causal:</b> the trend gate is the repository&rsquo;s trailing 20-day regression t-statistic; earnings dates are known in advance. No look-ahead anywhere.</li>
-        <li><b>Split:</b> tuned on 2020&ndash;2022, validated on 2023&ndash;2025 with fresh $100k per name. Config score = median CAGR across all 16 names, ruins counted as &minus;100%.</li>
-        <li><b>Honesty checks:</b> 39 configs ruined in-sample; 457 in-sample and 237 out-of-sample account-deaths at full sizing; zero full-sizing configs survived both windows. IS&rarr;OOS Spearman 0.58 overall, 0.20 within fixed sizing.</li>
+        <li><b>No look-ahead:</b> the trend gate is a trailing 20-day regression t-statistic, and earnings dates are known in advance. Nothing in any filter uses future data.</li>
+        <li><b>The split:</b> tuned on 2020&ndash;2022, judged on 2023&ndash;2025 with fresh $100k per name. Each config scores as its median CAGR across all 16 names, with ruins counted as &minus;100%.</li>
+        <li><b>The damage:</b> 39 configs ruined in-sample. At full sizing, 457 in-sample and 237 out-of-sample account deaths, and zero full-sizing configs survived both windows. Spearman between in-sample and out-of-sample rank: 0.58 overall, 0.20 within fixed sizing.</li>
       </ul>
     </article>
     <article class="reveal">
-      <h3>What this data cannot test</h3>
-      <p>Three things, stated plainly. <b>True 7-day cycles</b> &mdash; no sub-13-DTE quotes exist in the source. <b>Mid-cycle exits or stops</b> &mdash; a position opened at 14 DTE has no quotes once it decays below the source&rsquo;s floor, so everything is held to expiry; a stop-loss would change the shape but must be priced, not assumed. <b>The GEX overlay</b> &mdash; the pitch pairs the trade with dealer-gamma dashboards; no historical dealer-positioning series exists here, and no timing signal changes the payoff&rsquo;s asymmetry, only how often you hold it.</p>
+      <h3>What this data can&rsquo;t test</h3>
+      <p>Three things. <b>True 7-day cycles:</b> no sub-13-DTE quotes exist in the source. <b>Mid-cycle exits or stops:</b> a position opened at 14 DTE has no quotes once it decays below the source&rsquo;s floor, so everything is held to expiry. A stop-loss would change the shape of the returns, but you have to price one to claim it helps, not assume it. <b>The GEX overlay:</b> the pitch pairs this trade with dealer-gamma dashboards, and I have no historical dealer-positioning data to test timing with. I&rsquo;ll note that a timing signal changes how often you hold the position, not what the payoff does to you when you&rsquo;re wrong.</p>
     </article>
     <article class="reveal">
-      <h3>Reproduce it</h3>
-      <p>Engine and drivers in the <code>buywrite-backtest</code> repository: <code>wheel_bt/harvest.py</code> (86 lines, 5 tests), <code>run_harvest.py</code>, <code>scripts/sweep_harvest.py</code>, <code>scripts/export_site_data.py</code> for this page&rsquo;s data. <code>WHEEL_CACHE_DB=cache/wheel_cache.db python3 run_harvest.py</code> reruns the headline study offline; the full test suite (84 tests) passes.</p>
+      <h3>Reproducing it</h3>
+      <p>The engine and drivers live in my <code>buywrite-backtest</code> repo: <code>wheel_bt/harvest.py</code> (86 lines, 5 tests), <code>run_harvest.py</code>, <code>scripts/sweep_harvest.py</code>, and <code>scripts/export_site_data.py</code> for this page&rsquo;s numbers. <code>WHEEL_CACHE_DB=cache/wheel_cache.db python3 run_harvest.py</code> reruns the headline study offline, and the full test suite (84 tests) passes.</p>
     </article>
   </div>
 </section>
 
 <footer>
   <div class="col">
-    Produced July 2026 with the buywrite-backtest engine &middot; options data &copy; DoltHub <i>post-no-preference/options</i> contributors &middot; prices via Yahoo Finance.<br>
-    Nothing here is investment advice; it is what happened to $100,000, sixteen times, under rules fixed in advance.
+    Written and built July 2026 with my buywrite-backtest engine &middot; options data &copy; DoltHub <i>post-no-preference/options</i> contributors &middot; prices via Yahoo Finance.<br>
+    None of this is investment advice. It&rsquo;s just what happened to $100,000, sixteen times, under rules I fixed in advance.
   </div>
 </footer>
 
