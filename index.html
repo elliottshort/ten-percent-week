@@ -1,0 +1,685 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>The Ten-Percent Week — a backtest autopsy</title><meta name="description" content="A viral options pitch promised 10% a week harvesting volatility on NVDA. Six years of data, 16 stocks, and 3,456 backtests say otherwise."></head><body><title>The Ten-Percent Week</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #faf8f3;
+    --paper-deep: #f3efe6;
+    --ink: #1a1812;
+    --ink-2: #55524a;
+    --ink-3: #8a8781;
+    --hairline: #e2ddd0;
+    --rule: #c9c4b4;
+    --red: #e34948;          /* series: all-in harvest */
+    --red-text: #a8281f;     /* accent ink, 4.5:1+ on paper */
+    --blue: #2a78d6;         /* series: sized harvest */
+    --blue-text: #1c5cab;
+    --aqua: #1baf7a;         /* series: covered call */
+    --aqua-text: #0b7a54;
+    --green-text: #1d6b1d;
+    --serif-d: "Fraunces", Georgia, "Times New Roman", serif;
+    --serif-t: "Newsreader", Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+    color-scheme: light;
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--serif-t); font-size: clamp(17px, 1.05vw + 12px, 20px);
+    line-height: 1.62; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  }
+  ::selection { background: #f5d9c8; }
+
+  /* ---------- layout ---------- */
+  .col { max-width: 680px; margin-inline: auto; padding-inline: clamp(20px, 4vw, 32px); }
+  .wide { max-width: 1020px; margin-inline: auto; padding-inline: clamp(20px, 4vw, 32px); }
+  section { position: relative; }
+
+  /* ---------- masthead ---------- */
+  #progress { position: fixed; top: 0; left: 0; height: 2px; width: 0; background: var(--red-text); z-index: 50; }
+  .masthead {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+    padding: 18px clamp(20px, 4vw, 32px) 14px; border-bottom: 1px solid var(--hairline);
+    font-family: var(--sans); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3);
+  }
+  .masthead nav { display: flex; gap: 14px; flex-wrap: wrap; }
+  .masthead a { color: var(--ink-3); text-decoration: none; }
+  .masthead a:hover { color: var(--red-text); }
+
+  /* ---------- hero ---------- */
+  .hero { padding: clamp(56px, 10vh, 120px) 0 clamp(40px, 6vh, 72px); }
+  .kicker {
+    font-family: var(--sans); font-size: 12px; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--red-text); margin: 0 0 22px;
+  }
+  h1 {
+    font-family: var(--serif-d); font-weight: 340; font-variation-settings: "opsz" 130;
+    font-size: clamp(44px, 8.2vw, 96px); line-height: 1.0; letter-spacing: -0.015em; margin: 0 0 28px;
+    max-width: 12ch;
+  }
+  h1 em { font-style: italic; font-weight: 420; color: var(--red-text); }
+  .standfirst {
+    font-size: clamp(19px, 1.4vw + 12px, 24px); line-height: 1.5; color: var(--ink-2);
+    font-style: italic; max-width: 34em; margin: 0;
+  }
+  .verdict {
+    margin-top: clamp(40px, 6vh, 64px); border-top: 1px solid var(--rule); border-bottom: 1px solid var(--hairline);
+    display: grid; grid-template-columns: 1fr 1fr;
+  }
+  .verdict > div { padding: 20px 24px 22px 0; }
+  .verdict > div:nth-child(2n) { border-left: 1px solid var(--hairline); padding-left: 24px; }
+  .verdict > div:nth-child(n+3) { border-top: 1px solid var(--hairline); }
+  @media (max-width: 560px) {
+    .verdict { grid-template-columns: 1fr; }
+    .verdict > div:nth-child(2n) { border-left: 0; padding-left: 0; }
+    .verdict > div + div { border-top: 1px solid var(--hairline); }
+  }
+  .verdict .n {
+    font-family: var(--serif-d); font-weight: 350; font-size: clamp(30px, 3vw, 44px); line-height: 1.05;
+    display: block; margin-bottom: 6px;
+  }
+  .verdict .bad { color: var(--red-text); }
+  .verdict small { font-family: var(--sans); font-size: 12px; letter-spacing: .05em; color: var(--ink-3); line-height: 1.45; display: block; }
+
+  /* ---------- sections ---------- */
+  .sec { padding: clamp(48px, 8vh, 96px) 0 0; }
+  .secno {
+    font-family: var(--serif-d); font-weight: 300; font-style: italic;
+    font-size: clamp(60px, 7vw, 110px); line-height: 1; color: var(--paper-deep);
+    -webkit-text-stroke: 1px var(--rule); position: absolute; right: clamp(8px, 3vw, 40px); top: clamp(20px, 4vh, 44px);
+    user-select: none; pointer-events: none;
+  }
+  h2 {
+    font-family: var(--serif-d); font-weight: 380; font-size: clamp(28px, 3.4vw, 44px);
+    line-height: 1.12; letter-spacing: -0.01em; margin: 0 0 10px; max-width: 22ch;
+  }
+  .dek { color: var(--ink-2); font-style: italic; font-size: 1.05em; margin: 0 0 30px; max-width: 32em; }
+  p { margin: 0 0 1.35em; max-width: 38em; }
+  p a { color: var(--blue-text); text-decoration: underline; text-decoration-color: var(--hairline); text-underline-offset: 3px; }
+  strong { font-weight: 600; }
+  .num { font-variant-numeric: tabular-nums; }
+  .redline { background: linear-gradient(transparent 68%, #f6d8cf 68%); padding-inline: 1px; }
+
+  aside.note {
+    font-family: var(--sans); font-size: 13px; line-height: 1.55; color: var(--ink-3);
+    border-left: 2px solid var(--hairline); padding-left: 14px; margin: 26px 0 30px; max-width: 30em;
+  }
+  @media (min-width: 1300px) {
+    aside.note { position: absolute; right: calc((100vw - 680px)/2 - 300px); width: 236px; margin-top: -3.2em; border-left-color: var(--rule); }
+  }
+
+  /* ---------- figures ---------- */
+  figure { margin: 40px 0 14px; }
+  .fig-title { font-family: var(--sans); font-weight: 600; font-size: 14px; letter-spacing: .01em; margin: 0 0 2px; }
+  .fig-sub { font-family: var(--sans); font-size: 12.5px; color: var(--ink-3); margin: 0 0 16px; }
+  figcaption { font-family: var(--sans); font-size: 12.5px; color: var(--ink-3); line-height: 1.5; margin-top: 12px; max-width: 52em; }
+  .chartwrap { position: relative; }
+  .scrollx { overflow-x: auto; }
+  .scrollx svg { min-width: 560px; }
+  svg { display: block; width: 100%; height: auto; font-family: var(--sans); }
+  svg text { fill: var(--ink-3); font-size: 11.5px; }
+  svg .dlabel { fill: var(--ink); font-size: 12px; font-weight: 600; }
+  .legend { display: flex; gap: 20px; flex-wrap: wrap; font-family: var(--sans); font-size: 12.5px; color: var(--ink-2); margin: 2px 0 10px; }
+  .legend b { font-weight: 400; }
+  .sw { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 7px; position: relative; top: -2px; }
+  .sw.dot { width: 9px; height: 9px; border-radius: 50%; top: 0; }
+
+  #tip {
+    position: fixed; z-index: 60; pointer-events: none; opacity: 0; transition: opacity .12s ease-out;
+    background: var(--ink); color: #f6f4ee; font-family: var(--sans); font-size: 12px; line-height: 1.5;
+    padding: 8px 11px; border-radius: 4px; max-width: 260px; font-variant-numeric: tabular-nums;
+  }
+  #tip b { color: #fff; }
+  #tip .trow { display: flex; justify-content: space-between; gap: 14px; }
+
+  /* ---------- cycle strip ---------- */
+  .cycles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); border-block: 1px solid var(--hairline); margin: 34px 0; }
+  .cycles > div { padding: 16px 18px 18px 0; }
+  .cycles > div + div { border-left: 1px solid var(--hairline); padding-left: 18px; }
+  .cycles .cdate { font-family: var(--sans); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .cycles .cret { font-family: var(--serif-d); font-size: clamp(24px, 2.4vw, 34px); font-weight: 360; margin: 4px 0 2px; }
+  .cycles .ceq { font-family: var(--sans); font-size: 12px; color: var(--ink-3); }
+  .cycles .down { color: var(--red-text); }
+  .cycles .up { color: var(--green-text); }
+
+  /* ---------- tables ---------- */
+  table { border-collapse: collapse; width: 100%; font-family: var(--sans); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+  thead th {
+    text-align: left; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3);
+    font-weight: 500; border-bottom: 1px solid var(--rule); padding: 0 14px 9px 0;
+  }
+  tbody td { border-bottom: 1px solid var(--hairline); padding: 8px 14px 8px 0; }
+  tbody tr:hover { background: #f5f1e8; }
+  td.r, th.r { text-align: right; }
+  td .ruin { color: var(--red-text); font-weight: 600; }
+  td .ok { color: var(--ink-2); }
+
+  /* ---------- head-to-head ---------- */
+  .h2h { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); border-top: 1px solid var(--rule); margin-top: 36px; }
+  .h2h > div { padding: 24px 26px 26px 0; border-bottom: 1px solid var(--hairline); }
+  .h2h > div + div { border-left: 1px solid var(--hairline); padding-left: 26px; }
+  .h2h .who { font-family: var(--sans); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-2); margin-bottom: 14px; min-height: 2.6em; }
+  .h2h .who .sw { margin-right: 8px; }
+  .h2h .big { font-family: var(--serif-d); font-weight: 340; font-size: clamp(40px, 4.4vw, 60px); line-height: 1; }
+  .h2h .dd { font-family: var(--sans); font-size: 13px; color: var(--ink-3); margin: 10px 0 12px; }
+  .h2h p { font-size: 14.5px; font-family: var(--sans); color: var(--ink-2); line-height: 1.55; margin: 0; }
+  .h2h .pick { box-shadow: inset 0 3px 0 var(--aqua); }
+
+  /* ---------- methodology ---------- */
+  .metho { counter-reset: m; margin-top: 10px; }
+  .metho > article { border-top: 1px solid var(--hairline); padding: 26px 0 10px; position: relative; }
+  .metho h3 { font-family: var(--serif-d); font-weight: 460; font-size: 21px; margin: 0 0 10px; }
+  .metho h3::before {
+    counter-increment: m; content: counter(m, decimal-leading-zero);
+    font-family: var(--sans); font-weight: 400; font-size: 12px; color: var(--red-text);
+    letter-spacing: .1em; margin-right: 14px; position: relative; top: -3px;
+  }
+  .metho p, .metho ul { font-size: 16.5px; color: var(--ink-2); }
+  .metho ul { margin: 0 0 1.3em; padding-left: 1.2em; max-width: 36em; }
+  .metho li { margin-bottom: .45em; }
+  .metho code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .82em;
+    background: var(--paper-deep); border: 1px solid var(--hairline); border-radius: 3px; padding: 1px 5px;
+  }
+
+  footer {
+    margin-top: clamp(60px, 10vh, 110px); border-top: 1px solid var(--rule);
+    padding: 28px clamp(20px, 4vw, 32px) 60px;
+    font-family: var(--sans); font-size: 12.5px; color: var(--ink-3); line-height: 1.7;
+  }
+  footer .col { padding-inline: 0; }
+
+  /* ---------- reveal motion ---------- */
+  .reveal { opacity: 0; transform: translateY(18px); transition: opacity .8s cubic-bezier(.16,1,.3,1), transform .8s cubic-bezier(.16,1,.3,1); transition-delay: var(--d, 0s); }
+  .reveal.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .reveal { opacity: 1; transform: none; transition: none; }
+  }
+</style>
+
+<div id="progress"></div>
+<div id="tip" role="tooltip"></div>
+
+<header class="masthead">
+  <span>Buywrite-Backtest Research &middot; July 2026</span>
+  <nav aria-label="Sections">
+    <a href="#pitch">The pitch</a><a href="#wipeout">The wipeout</a><a href="#sixteen">Sixteen names</a><a href="#sweep">The sweep</a><a href="#verdict">Verdict</a><a href="#method">Method</a>
+  </nav>
+</header>
+
+<section class="hero col">
+  <p class="kicker reveal">A backtest autopsy in five acts</p>
+  <h1 class="reveal" style="--d:.08s">The ten-percent week that <em>wasn&rsquo;t</em></h1>
+  <p class="standfirst reveal" style="--d:.16s">A screenshot promised a &ldquo;volatility harvest&rdquo; on NVDA — ten percent a week, paid even if the stock goes nowhere. We rebuilt the trade from the pitch, ran it through six years of options data on sixteen stocks, then spent 3,456 more backtests trying to tune it into working. This page is the full record.</p>
+  <div class="verdict reveal" style="--d:.26s">
+    <div><span class="n bad num">13 / 16</span><small>accounts wiped out when traded exactly as pitched, 2020&ndash;2025</small></div>
+    <div><span class="n bad num">0 / 16</span><small>names where any survivable sizing beat simply owning the stock</small></div>
+    <div><span class="n num">108</span><small>parameter configurations swept, tuned in-sample, validated out-of-sample</small></div>
+    <div><span class="n num">1</span><small>strategy left standing &mdash; and it&rsquo;s the boring one the pitch was dressed up as</small></div>
+  </div>
+</section>
+
+<section class="sec col" id="pitch">
+  <span class="secno" aria-hidden="true">01</span>
+  <h2 class="reveal">The pitch, taken seriously</h2>
+  <p class="dek reveal">Before testing a trade you have to steelman it. Here is exactly what was claimed, and exactly what the position is.</p>
+  <p class="reveal">With NVDA at <span class="num">$210.96</span>, the trade buys the deep in-the-money <span class="num">$160</span> call for <span class="num">$5,027</span> and sells the at-the-money <span class="num">$210</span> call for <span class="num">$475</span> against it, both expiring in about a week. Net cost: <span class="num">$4,528</span> per contract set. If NVDA finishes anywhere above $210, the spread pays its full <span class="num">$5,000</span> width &mdash; a <strong class="num">+10.4%</strong> return in seven days, collected <em>even if the stock doesn&rsquo;t move</em>. The pitch: repeat weekly, compound $45k into $50k, harvest &ldquo;volatility premium&rdquo; forever.</p>
+  <p class="reveal">All of that is arithmetically true. The part the screenshot doesn&rsquo;t show is the left side of the payoff.</p>
+  <aside class="note reveal">The long $160 call carries almost no time value &mdash; it is a stock surrogate with delta &asymp; 1. The position is <b>levered long NVDA ~4.7&times;</b> with upside capped at +10.4%.</aside>
+
+  <figure class="reveal">
+    <p class="fig-title">Fig. 1 &mdash; What the trade actually is: payoff at expiry, one contract set</p>
+    <p class="fig-sub">Buy 160C / sell 210C for a $4,528 debit, NVDA at $210.96 &middot; hover for P&amp;L at any price</p>
+    <div class="chartwrap" id="payoff"></div>
+    <figcaption>Above $210 the spread is worth its full $5,000 width (+10.4%). Below the $205.28 breakeven &mdash; a 2.7% dip &mdash; losses run at roughly 4.7&times; the stock&rsquo;s move. At $160, a 24% drawdown for NVDA, the position is worth exactly zero.</figcaption>
+  </figure>
+
+  <p class="reveal">The premium is real. It is not free: it is the market&rsquo;s price for insuring a levered position against exactly the kind of week that, as we&rsquo;re about to see, arrives on schedule.</p>
+</section>
+
+<section class="sec col" id="wipeout">
+  <span class="secno" aria-hidden="true">02</span>
+  <h2 class="reveal">Seven weeks to zero</h2>
+  <p class="dek reveal">We ran the trade as pitched &mdash; full account redeployed every cycle &mdash; starting January 2020 with $100,000.</p>
+  <p class="reveal">Our options source lists no expiries under ~13 days, so cycles run about two weeks instead of the pitched seven days &mdash; same structure, same economics, half the compounding events (details in the <a href="#method">methodology</a>). The first two cycles are the screenshot come to life: <strong class="num">+19.3%</strong>, then <strong class="num">+32.5%</strong>. Fifty-eight percent up in a month. Then February 2020 ends.</p>
+
+  <div class="cycles reveal" id="cyclestrip"></div>
+
+  <figure class="reveal">
+    <p class="fig-title">Fig. 2 &mdash; NVDA, $100k, 2020&ndash;2025 (log scale)</p>
+    <p class="fig-sub">As-pitched all-in sizing vs. quarter sizing vs. owning the shares &middot; mid-quote fills</p>
+    <div class="legend" id="eqlegend"></div>
+    <div class="chartwrap" id="eqchart"></div>
+    <figcaption>The all-in line dies on March 20, 2020 with $15 left of $100,000 &mdash; and NVDA went on to return thirty-fold. Sized to a quarter of equity per cycle so it can survive, the harvest compounds at 31.4%&hellip; against 77.4% for doing nothing but holding the stock.</figcaption>
+  </figure>
+
+  <p class="reveal">Note what killed it. Not a market apocalypse &mdash; a <span class="redline">&minus;22.7% fortnight</span>, an event NVDA has delivered many times since. With a &minus;2.7% breakeven and ~4.7&times; leverage, the position converts a bad-but-ordinary two weeks into a total loss. Redeploying the full account each cycle guarantees the first such fortnight is the last.</p>
+</section>
+
+<section class="sec col" id="sixteen">
+  <span class="secno" aria-hidden="true">03</span>
+  <h2 class="reveal">Sixteen names, one mechanism</h2>
+  <p class="dek reveal">Maybe NVDA was unlucky. We ran the identical strategy on fifteen more large caps.</p>
+  <p class="reveal">Thirteen of sixteen all-in accounts were ruined outright. The three &ldquo;survivors&rdquo; &mdash; AMZN, WMT, CSCO &mdash; drew down <span class="num">89&ndash;98%</span> and survived on a technicality. And it is not a COVID story: <strong>NFLX sailed through March 2020 untouched and died on a single earnings gap in January 2022.</strong> Restarted in January 2021, skipping the crash entirely, five names still went to zero &mdash; AMD and BA in 2022, INTC in 2024, DIS in April 2025.</p>
+
+  <figure class="reveal">
+    <p class="fig-title">Fig. 3 &mdash; Survivable sizing still loses everywhere</p>
+    <p class="fig-sub">CAGR 2020&ndash;2025, harvest at 25% of equity per cycle vs. buy &amp; hold &middot; hover any row</p>
+    <div class="legend"><span><span class="sw dot" style="background:var(--blue)"></span><b>Harvest, 25% sizing</b></span><span><span class="sw dot" style="background:var(--ink-3)"></span><b>Buy &amp; hold</b></span></div>
+    <div class="chartwrap scrollx" id="dumbbell"></div>
+    <figcaption>Zero of sixteen names end to the right of their own stock. In the four names where the stock itself went nowhere or down (PFE, BA, DIS, INTC) &mdash; the regime premium-selling is supposed to own &mdash; the harvest did <em>worse than the falling stock</em>.</figcaption>
+  </figure>
+
+  <figure class="reveal">
+    <p class="fig-title">Table 1 &mdash; The all-in autopsy, name by name</p>
+    <p class="fig-sub">Traded exactly as pitched: full equity per cycle, mid fills, 2020&ndash;2025</p>
+    <div class="scrollx"><table id="autopsy"></table></div>
+    <figcaption>&ldquo;Worst cycle&rdquo; is the harvest&rsquo;s worst single two-week return at 25% sizing &mdash; at full sizing, multiply by four and cap at &minus;100%.</figcaption>
+  </figure>
+</section>
+
+<section class="sec col" id="sweep">
+  <span class="secno" aria-hidden="true">04</span>
+  <h2 class="reveal">Trying to tune it into working</h2>
+  <p class="dek reveal">&ldquo;Adjust any variables needed.&rdquo; We did &mdash; 108 configurations, with a wall between the data that picks the winner and the data that judges it.</p>
+  <p class="reveal">We swept every lever the trade has: long-leg depth (76 / 85 / 92% of spot), short strike (at-the-money or 5% out), expiry (two weeks or a month), sizing (25 / 50 / 100% of equity), and two principled entry filters &mdash; skip earnings fortnights, and a causal trend gate. Each configuration was <strong>tuned on 2020&ndash;2022 and validated on 2023&ndash;2025</strong> with fresh capital, across all sixteen names. Tuning and judging on the same years is how pitches like this get manufactured; the split is what makes &ldquo;predictably profitable&rdquo; mean something.</p>
+
+  <figure class="reveal">
+    <p class="fig-title">Fig. 4 &mdash; Does in-sample tuning predict out-of-sample results?</p>
+    <p class="fig-sub">Each dot is one configuration: median CAGR across 16 names, tuned window vs. validation window &middot; hover any dot</p>
+    <div class="chartwrap scrollx" id="scatter"></div>
+    <figcaption>The left gutter is the graveyard: 39 configurations &mdash; every full-sizing variant, the as-pitched trade among them &mdash; ruined in-sample, with out-of-sample fates scattered from &minus;100% to +38% by pure luck. Among survivable configs the tuning signal collapses: Spearman rank correlation is 0.58 overall but <b>0.20 once sizing is held fixed</b>. Almost everything &ldquo;learned&rdquo; was: don&rsquo;t use leverage.</figcaption>
+  </figure>
+
+  <p class="reveal">The best defensible configuration &mdash; 92%-moneyness long leg, monthly expiry, quarter sizing, no filter &mdash; earned <span class="num">+7.3%</span> in-sample and <span class="num">+26.1%</span> out-of-sample. Look at what each &ldquo;refinement&rdquo; did: <em>less</em> leverage, <em>longer</em> cycles, <em>smaller</em> size. The sweep, asked to maximize returns, spent 3,456 backtests walking the strategy back toward a plain covered call.</p>
+  <aside class="note reveal">The configs that did best out-of-sample (+33&ndash;40%) all had negative or ruinous in-sample records. Picking them now would be hindsight, not refinement.</aside>
+</section>
+
+<section class="sec col" id="verdict">
+  <span class="secno" aria-hidden="true">05</span>
+  <h2 class="reveal">The verdict</h2>
+  <p class="dek reveal">Out-of-sample, 2023&ndash;2025, median across sixteen names.</p>
+  <div class="h2h reveal">
+    <div>
+      <div class="who"><span class="sw" style="background:var(--blue)"></span>Refined harvest</div>
+      <div class="big num">+26.1%</div>
+      <div class="dd num">median max drawdown &minus;53%</div>
+      <p>The sweep&rsquo;s best in-sample pick: 92% moneyness, monthly, quarter-sized. Trails the index with triple the pain.</p>
+    </div>
+    <div class="pick">
+      <div class="who"><span class="sw" style="background:var(--aqua)"></span>Covered call &middot; unlevered</div>
+      <div class="big num">+20.7%</div>
+      <div class="dd num">median max drawdown &minus;17.8%</div>
+      <p>Same premium stream, no ruin state. Below the strike you just own cheaper stock. This is what the pitch was, minus the leverage.</p>
+    </div>
+    <div>
+      <div class="who"><span class="sw" style="background:var(--ink-3)"></span>Buy &amp; hold</div>
+      <div class="big num">+29.0%</div>
+      <div class="dd num">ordinary equity drawdowns</div>
+      <p>Doing nothing beat every harvest configuration tested, before a single real-world fill got worse than mid.</p>
+    </div>
+  </div>
+  <p class="reveal" style="margin-top:34px">The 10% week is the <em>maximum payoff of a bet</em>, not a yield. Sixty-one percent of NVDA cycles did pay in full &mdash; the median fortnight was genuinely positive &mdash; and none of it mattered, because one ordinary bad fortnight erases months and the sizing that makes the returns exciting makes the erasure permanent. Every version of this trade is either ruin-bound or a worse covered call. There is no third setting.</p>
+</section>
+
+<section class="sec col" id="method">
+  <span class="secno" aria-hidden="true">06</span>
+  <h2 class="reveal">Methodology, in full</h2>
+  <p class="dek reveal">Every number above is reproducible from the repository. Here is exactly how they were made, including what this data cannot test.</p>
+  <div class="metho">
+    <article class="reveal">
+      <h3>Data</h3>
+      <p>Option chains from the DoltHub <code>post-no-preference/options</code> dataset: near-daily snapshots with bid, ask, IV and delta. Each snapshot carries roughly three expirations (~2, ~4, ~7 weeks; nothing under ~13 days to expiry) and strikes within about &plusmn;30% of spot. Underlying closes, dividends, splits and earnings dates from Yahoo Finance; the 13-week T-bill (<code>^IRX</code>) as the cash rate. Everything is cached to SQLite (~52,000 chain snapshots across 16 symbols); every run after the first is fully offline.</p>
+    </article>
+    <article class="reveal">
+      <h3>Reconstructing the trade</h3>
+      <p>Each cycle buys the call nearest 76% of spot (clamped to the deepest listed strike) and sells the call nearest the money, same expiry, at mid-quote. Positions are held to expiry, settled at intrinsic value against the closing price, and re-entered the same day. Contracts are floored to whole units; idle cash earns nothing (conservative for the sized variants). A second fill model pays 25% of the half-spread on each leg; it costs the strategy 2&ndash;6 CAGR points and changes no conclusion. Real two-legged weekly fills would be worse than either.</p>
+    </article>
+    <article class="reveal">
+      <h3>The one adaptation</h3>
+      <p>The pitch uses 7-day expiries; the dataset&rsquo;s shortest is ~14 days. Cycles therefore run two weeks &mdash; the identical structure with half the compounding events and, per unit time, a slightly <em>gentler</em> gamma profile than the true weekly. If anything, this flatters the pitch: the weekly version meets one more coin-flip per month.</p>
+    </article>
+    <article class="reveal">
+      <h3>Splits, and a trap worth documenting</h3>
+      <p>Strikes are as-traded on their date; cached closes are split-adjusted to the present. Engines back-adjust strikes with the cumulative product of splits <em>after</em> each date. Corollary discovered mid-study: you cannot date-slice the price series for windowed tests, because splits occurring after the window end (NVDA 10:1 in 2024, WMT 3:1 in 2024, NFLX 10:1 in 2025) are baked into the closes but invisible to the slice. Our first sweep pass silently dropped those three names in-sample; the published numbers gate entries by date on full-period data instead. If you build backtests, steal this lesson.</p>
+    </article>
+    <article class="reveal">
+      <h3>Ruin, precisely</h3>
+      <p>An account is ruined when it can no longer fund a single contract of the next cycle. All-in NVDA: $100,000 &rarr; $15 in four cycles (Jan 24 &ndash; Mar 20, 2020). Annualizing a six-week &minus;100% is meaningless, so ruined runs are reported as ruin dates, not CAGRs.</p>
+    </article>
+    <article class="reveal">
+      <h3>The sweep protocol</h3>
+      <ul>
+        <li><b>Grid:</b> moneyness {76, 85, 92%} &times; short strike {ATM, 105%} &times; expiry {~14d, ~28d} &times; sizing {25, 50, 100%} &times; filter {none, skip-earnings, skip-earnings + trend gate} = 108 configs.</li>
+        <li><b>Filters are causal:</b> the trend gate is the repository&rsquo;s trailing 20-day regression t-statistic; earnings dates are known in advance. No look-ahead anywhere.</li>
+        <li><b>Split:</b> tuned on 2020&ndash;2022, validated on 2023&ndash;2025 with fresh $100k per name. Config score = median CAGR across all 16 names, ruins counted as &minus;100%.</li>
+        <li><b>Honesty checks:</b> 39 configs ruined in-sample; 457 in-sample and 237 out-of-sample account-deaths at full sizing; zero full-sizing configs survived both windows. IS&rarr;OOS Spearman 0.58 overall, 0.20 within fixed sizing.</li>
+      </ul>
+    </article>
+    <article class="reveal">
+      <h3>What this data cannot test</h3>
+      <p>Three things, stated plainly. <b>True 7-day cycles</b> &mdash; no sub-13-DTE quotes exist in the source. <b>Mid-cycle exits or stops</b> &mdash; a position opened at 14 DTE has no quotes once it decays below the source&rsquo;s floor, so everything is held to expiry; a stop-loss would change the shape but must be priced, not assumed. <b>The GEX overlay</b> &mdash; the pitch pairs the trade with dealer-gamma dashboards; no historical dealer-positioning series exists here, and no timing signal changes the payoff&rsquo;s asymmetry, only how often you hold it.</p>
+    </article>
+    <article class="reveal">
+      <h3>Reproduce it</h3>
+      <p>Engine and drivers in the <code>buywrite-backtest</code> repository: <code>wheel_bt/harvest.py</code> (86 lines, 5 tests), <code>run_harvest.py</code>, <code>scripts/sweep_harvest.py</code>, <code>scripts/export_site_data.py</code> for this page&rsquo;s data. <code>WHEEL_CACHE_DB=cache/wheel_cache.db python3 run_harvest.py</code> reruns the headline study offline; the full test suite (84 tests) passes.</p>
+    </article>
+  </div>
+</section>
+
+<footer>
+  <div class="col">
+    Produced July 2026 with the buywrite-backtest engine &middot; options data &copy; DoltHub <i>post-no-preference/options</i> contributors &middot; prices via Yahoo Finance.<br>
+    Nothing here is investment advice; it is what happened to $100,000, sixteen times, under rules fixed in advance.
+  </div>
+</footer>
+
+<script>
+window.DATA = {"symbols":[{"sym":"NVDA","allin_ruined":true,"allin_ruin_date":"2020-03-20","allin_dd":-0.9999,"sized_cagr":0.3141,"sized_dd":-0.556,"bench_cagr":0.7738,"cycles":153,"pct_max_profit":0.6144,"worst_cycle":-0.2496},{"sym":"AAPL","allin_ruined":true,"allin_ruin_date":"2020-03-20","allin_dd":-0.9944,"sized_cagr":0.0622,"sized_dd":-0.3291,"bench_cagr":0.2372,"cycles":153,"pct_max_profit":0.549,"worst_cycle":-0.2446},{"sym":"AMD","allin_ruined":true,"allin_ruin_date":"2020-03-20","allin_dd":-0.9987,"sized_cagr":0.0251,"sized_dd":-0.611,"bench_cagr":0.2775,"cycles":153,"pct_max_profit":0.5359,"worst_cycle":-0.2498},{"sym":"MSFT","allin_ruined":true,"allin_ruin_date":"2020-03-20","allin_dd":-0.9906,"sized_cagr":0.1219,"sized_dd":-0.3635,"bench_cagr":0.2109,"cycles":152,"pct_max_profit":0.5789,"worst_cycle":-0.2406},{"sym":"AMZN","allin_ruined":false,"allin_ruin_date":null,"allin_dd":-0.9687,"sized_cagr":0.1319,"sized_dd":-0.4189,"bench_cagr":0.1669,"cycles":151,"pct_max_profit":0.5894,"worst_cycle":-0.1859},{"sym":"GOOGL","allin_ruined":true,"allin_ruin_date":"2020-03-20","allin_dd":-0.9961,"sized_cagr":0.126,"sized_dd":-0.3969,"bench_cagr":0.2794,"cycles":152,"pct_max_profit":0.6184,"worst_cycle":-0.2441},{"sym":"JPM","allin_ruined":true,"allin_ruin_date":"2020-03-06","allin_dd":-0.9999,"sized_cagr":-0.0065,"sized_dd":-0.4147,"bench_cagr":0.1925,"cycles":153,"pct_max_profit":0.6013,"worst_cycle":-0.2357},{"sym":"WMT","allin_ruined":false,"allin_ruin_date":null,"allin_dd":-0.8911,"sized_cagr":0.1043,"sized_dd":-0.2478,"bench_cagr":0.2076,"cycles":152,"pct_max_profit":0.5987,"worst_cycle":-0.2111},{"sym":"INTC","allin_ruined":true,"allin_ruin_date":"2020-03-20","allin_dd":-0.9995,"sized_cagr":-0.1597,"sized_dd":-0.7618,"bench_cagr":-0.0781,"cycles":152,"pct_max_profit":0.4868,"worst_cycle":-0.2436},{"sym":"CSCO","allin_ruined":false,"allin_ruin_date":null,"allin_dd":-0.9802,"sized_cagr":0.016,"sized_dd":-0.3597,"bench_cagr":0.1128,"cycles":152,"pct_max_profit":0.5263,"worst_cycle":-0.2196},{"sym":"DIS","allin_ruined":true,"allin_ruin_date":"2020-03-20","allin_dd":-0.9981,"sized_cagr":-0.1145,"sized_dd":-0.6159,"bench_cagr":-0.0292,"cycles":153,"pct_max_profit":0.4837,"worst_cycle":-0.2414},{"sym":"BA","allin_ruined":true,"allin_ruin_date":"2020-03-20","allin_dd":-0.9995,"sized_cagr":-0.076,"sized_dd":-0.4811,"bench_cagr":-0.0628,"cycles":153,"pct_max_profit":0.4837,"worst_cycle":-0.2488},{"sym":"XOM","allin_ruined":true,"allin_ruin_date":"2020-03-20","allin_dd":-0.9991,"sized_cagr":-0.0357,"sized_dd":-0.5212,"bench_cagr":0.1607,"cycles":151,"pct_max_profit":0.5629,"worst_cycle":-0.25},{"sym":"PFE","allin_ruined":true,"allin_ruin_date":"2020-03-20","allin_dd":-0.9989,"sized_cagr":-0.0427,"sized_dd":-0.4268,"bench_cagr":-0.0216,"cycles":148,"pct_max_profit":0.473,"worst_cycle":-0.2461},{"sym":"NFLX","allin_ruined":true,"allin_ruin_date":"2022-01-28","allin_dd":-0.9983,"sized_cagr":0.0879,"sized_dd":-0.6129,"bench_cagr":0.1789,"cycles":152,"pct_max_profit":0.5395,"worst_cycle":-0.2483},{"sym":"T","allin_ruined":true,"allin_ruin_date":"2020-03-20","allin_dd":-0.9982,"sized_cagr":-0.0364,"sized_dd":-0.5812,"bench_cagr":0.0297,"cycles":142,"pct_max_profit":0.4718,"worst_cycle":-0.25}],"nvda":{"allin":[{"d":"2020-01-24","v":100000.0},{"d":"2020-02-07","v":119318.5},{"d":"2020-02-21","v":158096.5},{"d":"2020-03-06","v":73963.55},{"d":"2020-03-20","v":14.68}],"sized":[{"d":"2020-01-24","v":100000.0},{"d":"2020-02-07","v":104829.62},{"d":"2020-02-21","v":113339.62},{"d":"2020-03-06","v":98275.13},{"d":"2020-03-20","v":73748.63},{"d":"2020-04-03","v":81448.13},{"d":"2020-04-17","v":86497.0},{"d":"2020-05-01","v":87931.45},{"d":"2020-05-15","v":92299.58},{"d":"2020-05-29","v":98370.39},{"d":"2020-06-12","v":102237.01},{"d":"2020-06-26","v":106809.39},{"d":"2020-07-10","v":110945.08},{"d":"2020-07-24","v":111822.99},{"d":"2020-08-07","v":116088.61},{"d":"2020-08-21","v":122864.86},{"d":"2020-09-04","v":127483.74},{"d":"2020-09-18","v":129823.72},{"d":"2020-10-02","v":136202.47},{"d":"2020-10-16","v":141700.4},{"d":"2020-10-30","v":131736.4},{"d":"2020-11-13","v":137889.77},{"d":"2020-11-27","v":144725.27},{"d":"2020-12-11","v":146727.1},{"d":"2020-12-24","v":151251.47},{"d":"2021-01-15","v":153059.86},{"d":"2021-01-29","v":158163.74},{"d":"2021-02-12","v":164720.24},{"d":"2021-02-26","v":156534.1},{"d":"2021-03-12","v":151387.72},{"d":"2021-03-26","v":156637.16},{"d":"2021-04-09","v":161149.6},{"d":"2021-04-23","v":166170.98},{"d":"2021-05-07","v":165406.84},{"d":"2021-05-21","v":169963.84},{"d":"2021-06-04","v":176841.34},{"d":"2021-06-18","v":182731.28},{"d":"2021-07-02","v":188891.28},{"d":"2021-07-16","v":170471.35},{"d":"2021-07-30","v":177322.72},{"d":"2021-08-13","v":183150.22},{"d":"2021-08-27","v":191282.22},{"d":"2021-09-10","v":194115.83},{"d":"2021-09-24","v":195693.62},{"d":"2021-10-08","v":188252.41},{"d":"2021-10-22","v":193724.91},{"d":"2021-11-05","v":199258.41},{"d":"2021-11-19","v":213410.91},{"d":"2021-12-03","v":204091.12},{"d":"2021-12-17","v":191579.13},{"d":"2021-12-31","v":200672.13},{"d":"2022-01-14","v":188983.52},{"d":"2022-01-28","v":164533.02},{"d":"2022-02-11","v":174125.02},{"d":"2022-02-25","v":186680.02},{"d":"2022-03-11","v":175258.28},{"d":"2022-03-25","v":185967.53},{"d":"2022-04-08","v":157344.97},{"d":"2022-04-22","v":135142.47},{"d":"2022-05-06","v":135326.46},{"d":"2022-05-20","v":125822.46},{"d":"2022-06-03","v":137022.46},{"d":"2022-06-17","v":119230.96},{"d":"2022-07-01","v":112841.56},{"d":"2022-07-15","v":118855.56},{"d":"2022-07-29","v":125669.81},{"d":"2022-08-12","v":131939.81},{"d":"2022-08-26","v":118467.31},{"d":"2022-09-09","v":107015.06},{"d":"2022-09-23","v":94757.46},{"d":"2022-10-07","v":96384.26},{"d":"2022-10-21","v":101799.26},{"d":"2022-11-11","v":107486.76},{"d":"2022-11-25","v":113346.76},{"d":"2022-12-09","v":117882.76},{"d":"2022-12-23","v":108481.47},{"d":"2023-01-06","v":110536.87},{"d":"2023-01-20","v":116026.87},{"d":"2023-02-03","v":121252.87},{"d":"2023-02-17","v":127332.87},{"d":"2023-03-03","v":135692.87},{"d":"2023-03-17","v":141599.87},{"d":"2023-03-31","v":147968.87},{"d":"2023-04-14","v":146954.06},{"d":"2023-04-28","v":152230.31},{"d":"2023-05-12","v":156971.06},{"d":"2023-05-26","v":164810.06},{"d":"2023-06-09","v":170530.82},{"d":"2023-06-23","v":176239.32},{"d":"2023-07-07","v":182295.57},{"d":"2023-07-21","v":188212.32},{"d":"2023-08-04","v":195328.32},{"d":"2023-08-18","v":195078.42},{"d":"2023-09-01","v":210433.17},{"d":"2023-09-15","v":194299.92},{"d":"2023-09-29","v":198055.78},{"d":"2023-10-13","v":204284.53},{"d":"2023-10-27","v":184154.53},{"d":"2023-11-10","v":191428.78},{"d":"2023-11-24","v":199714.68},{"d":"2023-12-08","v":204384.13},{"d":"2023-12-22","v":209501.63},{"d":"2024-01-05","v":214400.63},{"d":"2024-01-19","v":219476.63},{"d":"2024-02-02","v":226282.63},{"d":"2024-02-16","v":232885.13},{"d":"2024-03-01","v":250546.13},{"d":"2024-03-15","v":258779.63},{"d":"2024-03-28","v":276151.13},{"d":"2024-04-19","v":244213.62},{"d":"2024-05-03","v":255642.12},{"d":"2024-05-17","v":265498.12},{"d":"2024-05-31","v":282688.12},{"d":"2024-06-14","v":295093.12},{"d":"2024-06-28","v":285187.13},{"d":"2024-07-12","v":297877.13},{"d":"2024-07-26","v":267124.12},{"d":"2024-08-09","v":256904.12},{"d":"2024-08-30","v":260266.63},{"d":"2024-09-13","v":272096.63},{"d":"2024-09-27","v":286801.63},{"d":"2024-10-11","v":300189.13},{"d":"2024-10-25","v":314379.13},{"d":"2024-11-08","v":332034.13},{"d":"2024-11-22","v":333871.61},{"d":"2024-12-06","v":348659.11},{"d":"2024-12-20","v":335096.6},{"d":"2025-01-03","v":349406.6},{"d":"2025-01-17","v":342152.63},{"d":"2025-01-31","v":294010.13},{"d":"2025-02-14","v":316910.13},{"d":"2025-02-28","v":289604.12},{"d":"2025-03-14","v":296336.11},{"d":"2025-03-28","v":269858.11},{"d":"2025-04-11","v":283358.11},{"d":"2025-04-25","v":301758.11},{"d":"2025-05-09","v":314623.11},{"d":"2025-05-23","v":326098.11},{"d":"2025-06-06","v":342700.61},{"d":"2025-06-20","v":351813.11},{"d":"2025-07-03","v":360983.11},{"d":"2025-07-18","v":371733.11},{"d":"2025-08-01","v":382293.11},{"d":"2025-08-15","v":393230.61},{"d":"2025-08-29","v":396118.09},{"d":"2025-09-12","v":407578.09},{"d":"2025-09-26","v":417783.09},{"d":"2025-10-10","v":428178.09},{"d":"2025-10-24","v":445433.09},{"d":"2025-11-07","v":460838.09},{"d":"2025-11-21","v":457912.1},{"d":"2025-12-05","v":483797.1},{"d":"2025-12-19","v":495078.12},{"d":"2025-12-30","v":505590.62}],"bench":[{"d":"2020-01-24","v":100000.0},{"d":"2020-02-07","v":100443.15},{"d":"2020-02-21","v":117402.58},{"d":"2020-03-06","v":106213.67},{"d":"2020-03-20","v":82143.52},{"d":"2020-04-03","v":97378.5},{"d":"2020-04-17","v":116705.68},{"d":"2020-05-01","v":112896.94},{"d":"2020-05-15","v":135593.71},{"d":"2020-05-29","v":141737.99},{"d":"2020-06-12","v":142649.86},{"d":"2020-06-26","v":146203.13},{"d":"2020-07-10","v":167351.08},{"d":"2020-07-24","v":162803.69},{"d":"2020-08-07","v":178853.3},{"d":"2020-08-21","v":202552.42},{"d":"2020-09-04","v":201579.87},{"d":"2020-09-18","v":194660.91},{"d":"2020-10-02","v":208602.62},{"d":"2020-10-16","v":220568.05},{"d":"2020-10-30","v":200166.53},{"d":"2020-11-13","v":212351.55},{"d":"2020-11-27","v":211780.62},{"d":"2020-12-11","v":207821.7},{"d":"2020-12-24","v":207510.27},{"d":"2021-01-15","v":205366.3},{"d":"2021-01-29","v":207446.39},{"d":"2021-02-12","v":238931.27},{"d":"2021-02-26","v":219020.66},{"d":"2021-03-12","v":205312.0},{"d":"2021-03-26","v":205044.5},{"d":"2021-04-09","v":229969.88},{"d":"2021-04-23","v":243788.05},{"d":"2021-05-07","v":236553.58},{"d":"2021-05-21","v":239420.21},{"d":"2021-06-04","v":280726.97},{"d":"2021-06-18","v":297664.88},{"d":"2021-07-02","v":327181.82},{"d":"2021-07-16","v":290035.09},{"d":"2021-07-30","v":311403.26},{"d":"2021-08-13","v":322406.73},{"d":"2021-08-27","v":361501.82},{"d":"2021-09-10","v":358984.93},{"d":"2021-09-24","v":352644.62},{"d":"2021-10-08","v":332681.49},{"d":"2021-10-22","v":362945.6},{"d":"2021-11-05","v":475154.35},{"d":"2021-11-19","v":526786.98},{"d":"2021-12-03","v":490188.98},{"d":"2021-12-17","v":444001.69},{"d":"2021-12-31","v":469714.51},{"d":"2022-01-14","v":430282.83},{"d":"2022-01-28","v":364771.0},{"d":"2022-02-11","v":382482.5},{"d":"2022-02-25","v":385804.41},{"d":"2022-03-11","v":352959.06},{"d":"2022-03-25","v":442268.87},{"d":"2022-04-08","v":369233.5},{"d":"2022-04-22","v":311674.02},{"d":"2022-05-06","v":298258.38},{"d":"2022-05-20","v":266619.85},{"d":"2022-06-03","v":298977.07},{"d":"2022-06-17","v":253625.84},{"d":"2022-07-01","v":231952.64},{"d":"2022-07-15","v":251741.21},{"d":"2022-07-29","v":290088.55},{"d":"2022-08-12","v":298808.92},{"d":"2022-08-26","v":259694.97},{"d":"2022-09-09","v":229786.93},{"d":"2022-09-23","v":199903.6},{"d":"2022-10-07","v":192876.0},{"d":"2022-10-21","v":199105.01},{"d":"2022-11-11","v":260772.3},{"d":"2022-11-25","v":259861.92},{"d":"2022-12-09","v":271543.71},{"d":"2022-12-23","v":242873.59},{"d":"2023-01-06","v":237331.22},{"d":"2023-01-20","v":284928.45},{"d":"2023-02-03","v":337013.85},{"d":"2023-02-17","v":341613.85},{"d":"2023-03-03","v":381576.33},{"d":"2023-03-17","v":410891.76},{"d":"2023-03-31","v":443667.27},{"d":"2023-04-14","v":427391.3},{"d":"2023-04-28","v":443220.04},{"d":"2023-05-12","v":452659.76},{"d":"2023-05-26","v":622063.75},{"d":"2023-06-09","v":619259.0},{"d":"2023-06-23","v":674188.88},{"d":"2023-07-07","v":678884.81},{"d":"2023-07-21","v":707731.38},{"d":"2023-08-04","v":713657.26},{"d":"2023-08-18","v":691599.05},{"d":"2023-09-01","v":774816.45},{"d":"2023-09-15","v":701205.02},{"d":"2023-09-29","v":694799.92},{"d":"2023-10-13","v":726138.48},{"d":"2023-10-27","v":646897.54},{"d":"2023-11-10","v":772044.25},{"d":"2023-11-24","v":763115.5},{"d":"2023-12-08","v":758809.23},{"d":"2023-12-22","v":779957.39},{"d":"2024-01-05","v":784222.13},{"d":"2024-01-19","v":950244.61},{"d":"2024-02-02","v":1056768.01},{"d":"2024-02-16","v":1159841.14},{"d":"2024-03-01","v":1314235.33},{"d":"2024-03-15","v":1403019.15},{"d":"2024-03-28","v":1443255.18},{"d":"2024-04-19","v":1217141.49},{"d":"2024-05-03","v":1418225.49},{"d":"2024-05-17","v":1477165.72},{"d":"2024-05-31","v":1751166.44},{"d":"2024-06-14","v":2106677.22},{"d":"2024-06-28","v":1973452.35},{"d":"2024-07-12","v":2064505.35},{"d":"2024-07-26","v":1806042.71},{"d":"2024-08-09","v":1673297.17},{"d":"2024-08-30","v":1906839.97},{"d":"2024-09-13","v":1902686.61},{"d":"2024-09-27","v":1939430.4},{"d":"2024-10-11","v":2153502.64},{"d":"2024-10-25","v":2261177.62},{"d":"2024-11-08","v":2358468.83},{"d":"2024-11-22","v":2267727.65},{"d":"2024-12-06","v":2275715.5},{"d":"2024-12-20","v":2152056.07},{"d":"2025-01-03","v":2308148.1},{"d":"2025-01-17","v":2200145.97},{"d":"2025-01-31","v":1918317.57},{"d":"2025-02-14","v":2218359.35},{"d":"2025-02-28","v":1995804.35},{"d":"2025-03-14","v":1944039.97},{"d":"2025-03-28","v":1752304.29},{"d":"2025-04-11","v":1772436.57},{"d":"2025-04-25","v":1773714.84},{"d":"2025-05-09","v":1863830.6},{"d":"2025-05-23","v":2097747.99},{"d":"2025-06-06","v":2264398.38},{"d":"2025-06-20","v":2298591.32},{"d":"2025-07-03","v":2546107.18},{"d":"2025-07-18","v":2754953.92},{"d":"2025-08-01","v":2775886.48},{"d":"2025-08-15","v":2883425.65},{"d":"2025-08-29","v":2783236.72},{"d":"2025-09-12","v":2841560.61},{"d":"2025-09-26","v":2847473.13},{"d":"2025-10-10","v":2926893.66},{"d":"2025-10-24","v":2976431.46},{"d":"2025-11-07","v":3006633.62},{"d":"2025-11-21","v":2858499.36},{"d":"2025-12-05","v":2915068.48},{"d":"2025-12-19","v":2892375.69},{"d":"2025-12-30","v":2997050.11}],"ledger_allin":[{"entry":"2020-01-24","expiry":"2020-02-07","ref":6.262,"kl":5.3125,"ks":6.25,"debit":0.7856,"width":0.9375,"settle":6.2898,"value":0.9375},{"entry":"2020-02-07","expiry":"2020-02-21","ref":6.2898,"kl":5.375,"ks":6.3125,"debit":0.7075,"width":0.9375,"settle":7.3517,"value":0.9375},{"entry":"2020-02-21","expiry":"2020-03-06","ref":7.3517,"kl":6.25,"ks":7.375,"debit":0.8575,"width":1.125,"settle":6.651,"value":0.401},{"entry":"2020-03-06","expiry":"2020-03-20","ref":6.651,"kl":5.625,"ks":6.625,"debit":0.7388,"width":1.0,"settle":5.1438,"value":0.0}]},"sweep":[{"moneyness":0.76,"short_m":1.0,"dte_lo":10,"alloc":0.25,"filter":"none","is_med":-0.0531,"is_ruins":0,"oos_med":0.1287,"oos_ruins":0,"oos_min":-0.0611,"oos_med_dd":-0.2163},{"moneyness":0.76,"short_m":1.0,"dte_lo":10,"alloc":0.25,"filter":"earn","is_med":-0.0581,"is_ruins":0,"oos_med":0.068,"oos_ruins":0,"oos_min":-0.1416,"oos_med_dd":-0.2159},{"moneyness":0.76,"short_m":1.0,"dte_lo":10,"alloc":0.25,"filter":"earn+trend","is_med":-0.0262,"is_ruins":0,"oos_med":0.0441,"oos_ruins":0,"oos_min":-0.1192,"oos_med_dd":-0.1826},{"moneyness":0.76,"short_m":1.0,"dte_lo":10,"alloc":0.5,"filter":"none","is_med":-0.224,"is_ruins":0,"oos_med":0.2091,"oos_ruins":0,"oos_min":-0.1477,"oos_med_dd":-0.4204},{"moneyness":0.76,"short_m":1.0,"dte_lo":10,"alloc":0.5,"filter":"earn","is_med":-0.2065,"is_ruins":0,"oos_med":0.1028,"oos_ruins":0,"oos_min":-0.2905,"oos_med_dd":-0.41},{"moneyness":0.76,"short_m":1.0,"dte_lo":10,"alloc":0.5,"filter":"earn+trend","is_med":-0.0987,"is_ruins":0,"oos_med":0.0797,"oos_ruins":0,"oos_min":-0.2579,"oos_med_dd":-0.3639},{"moneyness":0.76,"short_m":1.0,"dte_lo":10,"alloc":1.0,"filter":"none","is_med":-1.0,"is_ruins":13,"oos_med":0.2298,"oos_ruins":2,"oos_min":-1.0,"oos_med_dd":-0.7649},{"moneyness":0.76,"short_m":1.0,"dte_lo":10,"alloc":1.0,"filter":"earn","is_med":-1.0,"is_ruins":9,"oos_med":0.0825,"oos_ruins":1,"oos_min":-1.0,"oos_med_dd":-0.7434},{"moneyness":0.76,"short_m":1.0,"dte_lo":10,"alloc":1.0,"filter":"earn+trend","is_med":-0.5553,"is_ruins":6,"oos_med":-0.0137,"oos_ruins":3,"oos_min":-1.0,"oos_med_dd":-0.6743},{"moneyness":0.76,"short_m":1.0,"dte_lo":24,"alloc":0.25,"filter":"none","is_med":0.0474,"is_ruins":0,"oos_med":0.0985,"oos_ruins":0,"oos_min":-0.1698,"oos_med_dd":-0.1918},{"moneyness":0.76,"short_m":1.0,"dte_lo":24,"alloc":0.25,"filter":"earn","is_med":-0.0622,"is_ruins":0,"oos_med":0.0244,"oos_ruins":0,"oos_min":-0.1115,"oos_med_dd":-0.1842},{"moneyness":0.76,"short_m":1.0,"dte_lo":24,"alloc":0.25,"filter":"earn+trend","is_med":-0.0047,"is_ruins":0,"oos_med":0.0617,"oos_ruins":0,"oos_min":-0.1226,"oos_med_dd":-0.0955},{"moneyness":0.76,"short_m":1.0,"dte_lo":24,"alloc":0.5,"filter":"none","is_med":0.0206,"is_ruins":0,"oos_med":0.2011,"oos_ruins":0,"oos_min":-0.3474,"oos_med_dd":-0.3667},{"moneyness":0.76,"short_m":1.0,"dte_lo":24,"alloc":0.5,"filter":"earn","is_med":-0.1776,"is_ruins":0,"oos_med":0.033,"oos_ruins":0,"oos_min":-0.2685,"oos_med_dd":-0.3567},{"moneyness":0.76,"short_m":1.0,"dte_lo":24,"alloc":0.5,"filter":"earn+trend","is_med":-0.0648,"is_ruins":0,"oos_med":0.1164,"oos_ruins":0,"oos_min":-0.3052,"oos_med_dd":-0.2139},{"moneyness":0.76,"short_m":1.0,"dte_lo":24,"alloc":1.0,"filter":"none","is_med":-1.0,"is_ruins":14,"oos_med":0.3626,"oos_ruins":1,"oos_min":-1.0,"oos_med_dd":-0.6495},{"moneyness":0.76,"short_m":1.0,"dte_lo":24,"alloc":1.0,"filter":"earn","is_med":-1.0,"is_ruins":12,"oos_med":-0.1415,"oos_ruins":1,"oos_min":-1.0,"oos_med_dd":-0.649},{"moneyness":0.76,"short_m":1.0,"dte_lo":24,"alloc":1.0,"filter":"earn+trend","is_med":-1.0,"is_ruins":11,"oos_med":0.1253,"oos_ruins":2,"oos_min":-1.0,"oos_med_dd":-0.4313},{"moneyness":0.76,"short_m":1.05,"dte_lo":10,"alloc":0.25,"filter":"none","is_med":-0.024,"is_ruins":0,"oos_med":0.1687,"oos_ruins":0,"oos_min":-0.1971,"oos_med_dd":-0.2672},{"moneyness":0.76,"short_m":1.05,"dte_lo":10,"alloc":0.25,"filter":"earn","is_med":-0.054,"is_ruins":0,"oos_med":0.1418,"oos_ruins":0,"oos_min":-0.2211,"oos_med_dd":-0.2503},{"moneyness":0.76,"short_m":1.05,"dte_lo":10,"alloc":0.25,"filter":"earn+trend","is_med":0.0162,"is_ruins":0,"oos_med":0.0872,"oos_ruins":0,"oos_min":-0.1779,"oos_med_dd":-0.2091},{"moneyness":0.76,"short_m":1.05,"dte_lo":10,"alloc":0.5,"filter":"none","is_med":-0.1854,"is_ruins":0,"oos_med":0.3005,"oos_ruins":0,"oos_min":-0.3934,"oos_med_dd":-0.4923},{"moneyness":0.76,"short_m":1.05,"dte_lo":10,"alloc":0.5,"filter":"earn","is_med":-0.2123,"is_ruins":0,"oos_med":0.1913,"oos_ruins":0,"oos_min":-0.423,"oos_med_dd":-0.4592},{"moneyness":0.76,"short_m":1.05,"dte_lo":10,"alloc":0.5,"filter":"earn+trend","is_med":-0.0565,"is_ruins":0,"oos_med":0.1332,"oos_ruins":0,"oos_min":-0.3594,"oos_med_dd":-0.4325},{"moneyness":0.76,"short_m":1.05,"dte_lo":10,"alloc":1.0,"filter":"none","is_med":-1.0,"is_ruins":13,"oos_med":0.3795,"oos_ruins":2,"oos_min":-1.0,"oos_med_dd":-0.8064},{"moneyness":0.76,"short_m":1.05,"dte_lo":10,"alloc":1.0,"filter":"earn","is_med":-1.0,"is_ruins":9,"oos_med":0.0643,"oos_ruins":1,"oos_min":-1.0,"oos_med_dd":-0.8219},{"moneyness":0.76,"short_m":1.05,"dte_lo":10,"alloc":1.0,"filter":"earn+trend","is_med":-0.6483,"is_ruins":7,"oos_med":-0.0719,"oos_ruins":3,"oos_min":-1.0,"oos_med_dd":-0.7941},{"moneyness":0.76,"short_m":1.05,"dte_lo":24,"alloc":0.25,"filter":"none","is_med":0.0409,"is_ruins":0,"oos_med":0.1544,"oos_ruins":0,"oos_min":-0.2197,"oos_med_dd":-0.228},{"moneyness":0.76,"short_m":1.05,"dte_lo":24,"alloc":0.25,"filter":"earn","is_med":-0.0785,"is_ruins":0,"oos_med":0.052,"oos_ruins":0,"oos_min":-0.1528,"oos_med_dd":-0.1951},{"moneyness":0.76,"short_m":1.05,"dte_lo":24,"alloc":0.25,"filter":"earn+trend","is_med":-0.0033,"is_ruins":0,"oos_med":0.0645,"oos_ruins":0,"oos_min":-0.1492,"oos_med_dd":-0.1506},{"moneyness":0.76,"short_m":1.05,"dte_lo":24,"alloc":0.5,"filter":"none","is_med":-0.0086,"is_ruins":0,"oos_med":0.2941,"oos_ruins":0,"oos_min":-0.4348,"oos_med_dd":-0.4229},{"moneyness":0.76,"short_m":1.05,"dte_lo":24,"alloc":0.5,"filter":"earn","is_med":-0.2138,"is_ruins":0,"oos_med":0.0635,"oos_ruins":0,"oos_min":-0.3427,"oos_med_dd":-0.3813},{"moneyness":0.76,"short_m":1.05,"dte_lo":24,"alloc":0.5,"filter":"earn+trend","is_med":-0.0462,"is_ruins":0,"oos_med":0.1123,"oos_ruins":0,"oos_min":-0.349,"oos_med_dd":-0.3084},{"moneyness":0.76,"short_m":1.05,"dte_lo":24,"alloc":1.0,"filter":"none","is_med":-1.0,"is_ruins":15,"oos_med":0.2294,"oos_ruins":1,"oos_min":-1.0,"oos_med_dd":-0.7382},{"moneyness":0.76,"short_m":1.05,"dte_lo":24,"alloc":1.0,"filter":"earn","is_med":-1.0,"is_ruins":13,"oos_med":-0.1126,"oos_ruins":2,"oos_min":-1.0,"oos_med_dd":-0.6828},{"moneyness":0.76,"short_m":1.05,"dte_lo":24,"alloc":1.0,"filter":"earn+trend","is_med":-1.0,"is_ruins":11,"oos_med":0.0724,"oos_ruins":1,"oos_min":-1.0,"oos_med_dd":-0.6024},{"moneyness":0.85,"short_m":1.0,"dte_lo":10,"alloc":0.25,"filter":"none","is_med":-0.1099,"is_ruins":0,"oos_med":0.183,"oos_ruins":0,"oos_min":-0.2034,"oos_med_dd":-0.3442},{"moneyness":0.85,"short_m":1.0,"dte_lo":10,"alloc":0.25,"filter":"earn","is_med":-0.0978,"is_ruins":0,"oos_med":0.113,"oos_ruins":0,"oos_min":-0.2615,"oos_med_dd":-0.3256},{"moneyness":0.85,"short_m":1.0,"dte_lo":10,"alloc":0.25,"filter":"earn+trend","is_med":-0.0433,"is_ruins":0,"oos_med":0.0585,"oos_ruins":0,"oos_min":-0.2355,"oos_med_dd":-0.3052},{"moneyness":0.85,"short_m":1.0,"dte_lo":10,"alloc":0.5,"filter":"none","is_med":-0.3572,"is_ruins":0,"oos_med":0.1822,"oos_ruins":0,"oos_min":-0.429,"oos_med_dd":-0.6493},{"moneyness":0.85,"short_m":1.0,"dte_lo":10,"alloc":0.5,"filter":"earn","is_med":-0.3517,"is_ruins":0,"oos_med":0.053,"oos_ruins":0,"oos_min":-0.5089,"oos_med_dd":-0.5942},{"moneyness":0.85,"short_m":1.0,"dte_lo":10,"alloc":0.5,"filter":"earn+trend","is_med":-0.1828,"is_ruins":0,"oos_med":0.0249,"oos_ruins":0,"oos_min":-0.4679,"oos_med_dd":-0.5659},{"moneyness":0.85,"short_m":1.0,"dte_lo":10,"alloc":1.0,"filter":"none","is_med":-1.0,"is_ruins":15,"oos_med":-0.1298,"oos_ruins":4,"oos_min":-1.0,"oos_med_dd":-0.9622},{"moneyness":0.85,"short_m":1.0,"dte_lo":10,"alloc":1.0,"filter":"earn","is_med":-1.0,"is_ruins":11,"oos_med":-0.3309,"oos_ruins":5,"oos_min":-1.0,"oos_med_dd":-0.9404},{"moneyness":0.85,"short_m":1.0,"dte_lo":10,"alloc":1.0,"filter":"earn+trend","is_med":-1.0,"is_ruins":9,"oos_med":-0.2331,"oos_ruins":5,"oos_min":-1.0,"oos_med_dd":-0.8873},{"moneyness":0.85,"short_m":1.0,"dte_lo":24,"alloc":0.25,"filter":"none","is_med":0.0666,"is_ruins":0,"oos_med":0.1886,"oos_ruins":0,"oos_min":-0.2342,"oos_med_dd":-0.2925},{"moneyness":0.85,"short_m":1.0,"dte_lo":24,"alloc":0.25,"filter":"earn","is_med":-0.0726,"is_ruins":0,"oos_med":0.0189,"oos_ruins":0,"oos_min":-0.2556,"oos_med_dd":-0.2775},{"moneyness":0.85,"short_m":1.0,"dte_lo":24,"alloc":0.25,"filter":"earn+trend","is_med":-0.0236,"is_ruins":0,"oos_med":0.0866,"oos_ruins":0,"oos_min":-0.2024,"oos_med_dd":-0.2033},{"moneyness":0.85,"short_m":1.0,"dte_lo":24,"alloc":0.5,"filter":"none","is_med":-0.0358,"is_ruins":0,"oos_med":0.3405,"oos_ruins":0,"oos_min":-0.4942,"oos_med_dd":-0.5626},{"moneyness":0.85,"short_m":1.0,"dte_lo":24,"alloc":0.5,"filter":"earn","is_med":-0.2322,"is_ruins":0,"oos_med":-0.045,"oos_ruins":0,"oos_min":-0.4806,"oos_med_dd":-0.5195},{"moneyness":0.85,"short_m":1.0,"dte_lo":24,"alloc":0.5,"filter":"earn+trend","is_med":-0.1057,"is_ruins":0,"oos_med":0.1359,"oos_ruins":0,"oos_min":-0.4576,"oos_med_dd":-0.3959},{"moneyness":0.85,"short_m":1.0,"dte_lo":24,"alloc":1.0,"filter":"none","is_med":-1.0,"is_ruins":10,"oos_med":0.0513,"oos_ruins":5,"oos_min":-1.0,"oos_med_dd":-0.9081},{"moneyness":0.85,"short_m":1.0,"dte_lo":24,"alloc":1.0,"filter":"earn","is_med":-1.0,"is_ruins":13,"oos_med":-0.4422,"oos_ruins":6,"oos_min":-1.0,"oos_med_dd":-0.8492},{"moneyness":0.85,"short_m":1.0,"dte_lo":24,"alloc":1.0,"filter":"earn+trend","is_med":-1.0,"is_ruins":11,"oos_med":-0.3524,"oos_ruins":5,"oos_min":-1.0,"oos_med_dd":-0.7733},{"moneyness":0.85,"short_m":1.05,"dte_lo":10,"alloc":0.25,"filter":"none","is_med":-0.0705,"is_ruins":0,"oos_med":0.2577,"oos_ruins":0,"oos_min":-0.2897,"oos_med_dd":-0.368},{"moneyness":0.85,"short_m":1.05,"dte_lo":10,"alloc":0.25,"filter":"earn","is_med":-0.0774,"is_ruins":0,"oos_med":0.18,"oos_ruins":0,"oos_min":-0.3126,"oos_med_dd":-0.3653},{"moneyness":0.85,"short_m":1.05,"dte_lo":10,"alloc":0.25,"filter":"earn+trend","is_med":-0.008,"is_ruins":0,"oos_med":0.1204,"oos_ruins":0,"oos_min":-0.2499,"oos_med_dd":-0.3091},{"moneyness":0.85,"short_m":1.05,"dte_lo":10,"alloc":0.5,"filter":"none","is_med":-0.3723,"is_ruins":0,"oos_med":0.3275,"oos_ruins":0,"oos_min":-0.5494,"oos_med_dd":-0.6608},{"moneyness":0.85,"short_m":1.05,"dte_lo":10,"alloc":0.5,"filter":"earn","is_med":-0.3608,"is_ruins":0,"oos_med":0.2049,"oos_ruins":0,"oos_min":-0.6027,"oos_med_dd":-0.6467},{"moneyness":0.85,"short_m":1.05,"dte_lo":10,"alloc":0.5,"filter":"earn+trend","is_med":-0.1627,"is_ruins":0,"oos_med":0.1273,"oos_ruins":0,"oos_min":-0.5118,"oos_med_dd":-0.6133},{"moneyness":0.85,"short_m":1.05,"dte_lo":10,"alloc":1.0,"filter":"none","is_med":-1.0,"is_ruins":16,"oos_med":-0.216,"oos_ruins":5,"oos_min":-1.0,"oos_med_dd":-0.9764},{"moneyness":0.85,"short_m":1.05,"dte_lo":10,"alloc":1.0,"filter":"earn","is_med":-1.0,"is_ruins":12,"oos_med":-0.349,"oos_ruins":5,"oos_min":-1.0,"oos_med_dd":-0.966},{"moneyness":0.85,"short_m":1.05,"dte_lo":10,"alloc":1.0,"filter":"earn+trend","is_med":-1.0,"is_ruins":9,"oos_med":-0.478,"oos_ruins":5,"oos_min":-1.0,"oos_med_dd":-0.9435},{"moneyness":0.85,"short_m":1.05,"dte_lo":24,"alloc":0.25,"filter":"none","is_med":0.0419,"is_ruins":0,"oos_med":0.2442,"oos_ruins":0,"oos_min":-0.2894,"oos_med_dd":-0.32},{"moneyness":0.85,"short_m":1.05,"dte_lo":24,"alloc":0.25,"filter":"earn","is_med":-0.133,"is_ruins":0,"oos_med":0.0493,"oos_ruins":0,"oos_min":-0.3114,"oos_med_dd":-0.2809},{"moneyness":0.85,"short_m":1.05,"dte_lo":24,"alloc":0.25,"filter":"earn+trend","is_med":-0.0315,"is_ruins":0,"oos_med":0.0844,"oos_ruins":0,"oos_min":-0.2272,"oos_med_dd":-0.2559},{"moneyness":0.85,"short_m":1.05,"dte_lo":24,"alloc":0.5,"filter":"none","is_med":-0.1025,"is_ruins":0,"oos_med":0.4014,"oos_ruins":0,"oos_min":-0.5748,"oos_med_dd":-0.6155},{"moneyness":0.85,"short_m":1.05,"dte_lo":24,"alloc":0.5,"filter":"earn","is_med":-0.3283,"is_ruins":0,"oos_med":0.0195,"oos_ruins":0,"oos_min":-0.5955,"oos_med_dd":-0.5202},{"moneyness":0.85,"short_m":1.05,"dte_lo":24,"alloc":0.5,"filter":"earn+trend","is_med":-0.1313,"is_ruins":0,"oos_med":0.1707,"oos_ruins":0,"oos_min":-0.5086,"oos_med_dd":-0.4941},{"moneyness":0.85,"short_m":1.05,"dte_lo":24,"alloc":1.0,"filter":"none","is_med":-1.0,"is_ruins":13,"oos_med":0.0296,"oos_ruins":5,"oos_min":-1.0,"oos_med_dd":-0.9483},{"moneyness":0.85,"short_m":1.05,"dte_lo":24,"alloc":1.0,"filter":"earn","is_med":-1.0,"is_ruins":14,"oos_med":-0.4867,"oos_ruins":7,"oos_min":-1.0,"oos_med_dd":-0.8814},{"moneyness":0.85,"short_m":1.05,"dte_lo":24,"alloc":1.0,"filter":"earn+trend","is_med":-1.0,"is_ruins":12,"oos_med":-0.4949,"oos_ruins":5,"oos_min":-1.0,"oos_med_dd":-0.876},{"moneyness":0.92,"short_m":1.0,"dte_lo":10,"alloc":0.25,"filter":"none","is_med":-0.2322,"is_ruins":0,"oos_med":0.123,"oos_ruins":0,"oos_min":-0.3515,"oos_med_dd":-0.6292},{"moneyness":0.92,"short_m":1.0,"dte_lo":10,"alloc":0.25,"filter":"earn","is_med":-0.2374,"is_ruins":0,"oos_med":0.102,"oos_ruins":0,"oos_min":-0.4926,"oos_med_dd":-0.5199},{"moneyness":0.92,"short_m":1.0,"dte_lo":10,"alloc":0.25,"filter":"earn+trend","is_med":-0.1061,"is_ruins":0,"oos_med":0.0582,"oos_ruins":0,"oos_min":-0.3831,"oos_med_dd":-0.5447},{"moneyness":0.92,"short_m":1.0,"dte_lo":10,"alloc":0.5,"filter":"none","is_med":-0.6565,"is_ruins":1,"oos_med":-0.1642,"oos_ruins":0,"oos_min":-0.68,"oos_med_dd":-0.9272},{"moneyness":0.92,"short_m":1.0,"dte_lo":10,"alloc":0.5,"filter":"earn","is_med":-0.6555,"is_ruins":0,"oos_med":-0.2024,"oos_ruins":1,"oos_min":-1.0,"oos_med_dd":-0.858},{"moneyness":0.92,"short_m":1.0,"dte_lo":10,"alloc":0.5,"filter":"earn+trend","is_med":-0.444,"is_ruins":0,"oos_med":-0.216,"oos_ruins":0,"oos_min":-0.7225,"oos_med_dd":-0.8663},{"moneyness":0.92,"short_m":1.0,"dte_lo":10,"alloc":1.0,"filter":"none","is_med":-1.0,"is_ruins":16,"oos_med":-1.0,"oos_ruins":14,"oos_min":-1.0,"oos_med_dd":-1.0},{"moneyness":0.92,"short_m":1.0,"dte_lo":10,"alloc":1.0,"filter":"earn","is_med":-1.0,"is_ruins":15,"oos_med":-1.0,"oos_ruins":13,"oos_min":-1.0,"oos_med_dd":-1.0},{"moneyness":0.92,"short_m":1.0,"dte_lo":10,"alloc":1.0,"filter":"earn+trend","is_med":-1.0,"is_ruins":15,"oos_med":-1.0,"oos_ruins":13,"oos_min":-1.0,"oos_med_dd":-1.0},{"moneyness":0.92,"short_m":1.0,"dte_lo":24,"alloc":0.25,"filter":"none","is_med":0.0735,"is_ruins":0,"oos_med":0.2612,"oos_ruins":0,"oos_min":-0.3861,"oos_med_dd":-0.5301},{"moneyness":0.92,"short_m":1.0,"dte_lo":24,"alloc":0.25,"filter":"earn","is_med":-0.2126,"is_ruins":0,"oos_med":0.0317,"oos_ruins":0,"oos_min":-0.4075,"oos_med_dd":-0.4284},{"moneyness":0.92,"short_m":1.0,"dte_lo":24,"alloc":0.25,"filter":"earn+trend","is_med":-0.0848,"is_ruins":0,"oos_med":0.1181,"oos_ruins":0,"oos_min":-0.2765,"oos_med_dd":-0.3167},{"moneyness":0.92,"short_m":1.0,"dte_lo":24,"alloc":0.5,"filter":"none","is_med":-0.1598,"is_ruins":0,"oos_med":0.3078,"oos_ruins":0,"oos_min":-0.7414,"oos_med_dd":-0.8518},{"moneyness":0.92,"short_m":1.0,"dte_lo":24,"alloc":0.5,"filter":"earn","is_med":-0.5016,"is_ruins":0,"oos_med":-0.1628,"oos_ruins":0,"oos_min":-0.7191,"oos_med_dd":-0.7394},{"moneyness":0.92,"short_m":1.0,"dte_lo":24,"alloc":0.5,"filter":"earn+trend","is_med":-0.3056,"is_ruins":0,"oos_med":0.1506,"oos_ruins":0,"oos_min":-0.611,"oos_med_dd":-0.6179},{"moneyness":0.92,"short_m":1.0,"dte_lo":24,"alloc":1.0,"filter":"none","is_med":-1.0,"is_ruins":15,"oos_med":-1.0,"oos_ruins":14,"oos_min":-1.0,"oos_med_dd":-1.0},{"moneyness":0.92,"short_m":1.0,"dte_lo":24,"alloc":1.0,"filter":"earn","is_med":-1.0,"is_ruins":15,"oos_med":-1.0,"oos_ruins":12,"oos_min":-1.0,"oos_med_dd":-1.0},{"moneyness":0.92,"short_m":1.0,"dte_lo":24,"alloc":1.0,"filter":"earn+trend","is_med":-1.0,"is_ruins":13,"oos_med":-1.0,"oos_ruins":11,"oos_min":-1.0,"oos_med_dd":-1.0},{"moneyness":0.92,"short_m":1.05,"dte_lo":10,"alloc":0.25,"filter":"none","is_med":-0.2003,"is_ruins":0,"oos_med":0.1891,"oos_ruins":0,"oos_min":-0.5591,"oos_med_dd":-0.6423},{"moneyness":0.92,"short_m":1.05,"dte_lo":10,"alloc":0.25,"filter":"earn","is_med":-0.1775,"is_ruins":0,"oos_med":0.2645,"oos_ruins":0,"oos_min":-0.5617,"oos_med_dd":-0.5632},{"moneyness":0.92,"short_m":1.05,"dte_lo":10,"alloc":0.25,"filter":"earn+trend","is_med":-0.0123,"is_ruins":0,"oos_med":0.1425,"oos_ruins":0,"oos_min":-0.4605,"oos_med_dd":-0.5584},{"moneyness":0.92,"short_m":1.05,"dte_lo":10,"alloc":0.5,"filter":"none","is_med":-0.6801,"is_ruins":4,"oos_med":-0.1527,"oos_ruins":1,"oos_min":-1.0,"oos_med_dd":-0.9411},{"moneyness":0.92,"short_m":1.05,"dte_lo":10,"alloc":0.5,"filter":"earn","is_med":-0.6631,"is_ruins":1,"oos_med":-0.1043,"oos_ruins":1,"oos_min":-1.0,"oos_med_dd":-0.8954},{"moneyness":0.92,"short_m":1.05,"dte_lo":10,"alloc":0.5,"filter":"earn+trend","is_med":-0.4568,"is_ruins":1,"oos_med":-0.0715,"oos_ruins":1,"oos_min":-1.0,"oos_med_dd":-0.9},{"moneyness":0.92,"short_m":1.05,"dte_lo":10,"alloc":1.0,"filter":"none","is_med":-1.0,"is_ruins":16,"oos_med":-1.0,"oos_ruins":15,"oos_min":-1.0,"oos_med_dd":-1.0},{"moneyness":0.92,"short_m":1.05,"dte_lo":10,"alloc":1.0,"filter":"earn","is_med":-1.0,"is_ruins":15,"oos_med":-1.0,"oos_ruins":13,"oos_min":-1.0,"oos_med_dd":-1.0},{"moneyness":0.92,"short_m":1.05,"dte_lo":10,"alloc":1.0,"filter":"earn+trend","is_med":-1.0,"is_ruins":15,"oos_med":-1.0,"oos_ruins":14,"oos_min":-1.0,"oos_med_dd":-1.0},{"moneyness":0.92,"short_m":1.05,"dte_lo":24,"alloc":0.25,"filter":"none","is_med":-0.001,"is_ruins":0,"oos_med":0.2637,"oos_ruins":0,"oos_min":-0.4484,"oos_med_dd":-0.5454},{"moneyness":0.92,"short_m":1.05,"dte_lo":24,"alloc":0.25,"filter":"earn","is_med":-0.2302,"is_ruins":0,"oos_med":0.0807,"oos_ruins":0,"oos_min":-0.4936,"oos_med_dd":-0.459},{"moneyness":0.92,"short_m":1.05,"dte_lo":24,"alloc":0.25,"filter":"earn+trend","is_med":-0.1454,"is_ruins":0,"oos_med":0.1085,"oos_ruins":0,"oos_min":-0.3054,"oos_med_dd":-0.3697},{"moneyness":0.92,"short_m":1.05,"dte_lo":24,"alloc":0.5,"filter":"none","is_med":-0.2398,"is_ruins":0,"oos_med":0.1642,"oos_ruins":1,"oos_min":-1.0,"oos_med_dd":-0.8864},{"moneyness":0.92,"short_m":1.05,"dte_lo":24,"alloc":0.5,"filter":"earn","is_med":-0.5422,"is_ruins":0,"oos_med":-0.0861,"oos_ruins":1,"oos_min":-1.0,"oos_med_dd":-0.7891},{"moneyness":0.92,"short_m":1.05,"dte_lo":24,"alloc":0.5,"filter":"earn+trend","is_med":-0.4058,"is_ruins":0,"oos_med":0.1073,"oos_ruins":0,"oos_min":-0.6519,"oos_med_dd":-0.6763},{"moneyness":0.92,"short_m":1.05,"dte_lo":24,"alloc":1.0,"filter":"none","is_med":-1.0,"is_ruins":15,"oos_med":-1.0,"oos_ruins":14,"oos_min":-1.0,"oos_med_dd":-1.0},{"moneyness":0.92,"short_m":1.05,"dte_lo":24,"alloc":1.0,"filter":"earn","is_med":-1.0,"is_ruins":15,"oos_med":-1.0,"oos_ruins":12,"oos_min":-1.0,"oos_med_dd":-1.0},{"moneyness":0.92,"short_m":1.05,"dte_lo":24,"alloc":1.0,"filter":"earn+trend","is_med":-1.0,"is_ruins":14,"oos_med":-1.0,"oos_ruins":10,"oos_min":-1.0,"oos_med_dd":-1.0}],"overlay":{"NVDA":{"oos_cagr":0.5179,"oos_dd":-0.1777},"AAPL":{"oos_cagr":0.2146,"oos_dd":-0.1705},"AMD":{"oos_cagr":0.0945,"oos_dd":-0.4168},"MSFT":{"oos_cagr":0.1763,"oos_dd":-0.1082},"AMZN":{"oos_cagr":0.3678,"oos_dd":-0.1931},"GOOGL":{"oos_cagr":0.4822,"oos_dd":-0.1777},"JPM":{"oos_cagr":0.2203,"oos_dd":-0.1004},"WMT":{"oos_cagr":0.3043,"oos_dd":-0.0673},"INTC":{"oos_cagr":0.0358,"oos_dd":-0.4747},"CSCO":{"oos_cagr":0.1994,"oos_dd":-0.126},"DIS":{"oos_cagr":-0.0013,"oos_dd":-0.2205},"BA":{"oos_cagr":-0.0619,"oos_dd":-0.4342},"XOM":{"oos_cagr":0.1357,"oos_dd":-0.1243},"PFE":{"oos_cagr":-0.1228,"oos_dd":-0.3937},"NFLX":{"oos_cagr":0.3364,"oos_dd":-0.1749},"T":{"oos_cagr":0.2369,"oos_dd":-0.2099}}};
+(function () {
+  "use strict";
+  const D = window.DATA;
+  const css = v => getComputedStyle(document.body).getPropertyValue(v).trim();
+  const C = { red: "#e34948", blue: "#2a78d6", aqua: "#1baf7a", ink: "#1a1812", ink2: "#55524a", ink3: "#8a8781", grid: "#e7e2d5", rule: "#c9c4b4", redT: "#a8281f", blueT: "#1c5cab" };
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (n, a, parent) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); if (parent) parent.appendChild(e); return e; };
+  const fmt$ = v => v >= 1e6 ? "$" + (v / 1e6).toFixed(1) + "M" : v >= 1e3 ? "$" + Math.round(v / 1e3) + "k" : "$" + Math.round(v);
+  const pct = (v, s) => ((s && v > 0 ? "+" : "") + (v * 100).toFixed(1) + "%").replace("-", "−");
+  const pd = s => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+
+  /* tooltip */
+  const tip = document.getElementById("tip");
+  function showTip(html, x, y) {
+    tip.innerHTML = html; tip.style.opacity = 1;
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = Math.min(Math.max(8, x - w / 2), innerWidth - w - 8) + "px";
+    tip.style.top = (y - h - 14 < 8 ? y + 18 : y - h - 14) + "px";
+  }
+  const hideTip = () => tip.style.opacity = 0;
+
+  /* progress hairline */
+  addEventListener("scroll", () => {
+    const h = document.documentElement;
+    document.getElementById("progress").style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight) * 100) + "%";
+  }, { passive: true });
+
+  /* reveal on scroll + lazy chart build */
+  const builders = {};
+  const io = new IntersectionObserver(es => es.forEach(e => {
+    if (!e.isIntersecting) return;
+    e.target.classList.add("in");
+    const b = e.target.querySelector("[id]") && builders[e.target.querySelector("[id]").id];
+    io.unobserve(e.target);
+  }), { rootMargin: "0px 0px -8% 0px", threshold: 0.05 });
+  document.querySelectorAll(".reveal").forEach(n => io.observe(n));
+
+  const cio = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting && builders[e.target.id]) { builders[e.target.id](); delete builders[e.target.id]; cio.unobserve(e.target); }
+  }), { rootMargin: "120px 0px" });
+
+  function drawIn(path) {
+    if (reduced) return;
+    const L = path.getTotalLength();
+    path.style.strokeDasharray = L; path.style.strokeDashoffset = L;
+    path.getBoundingClientRect();
+    path.style.transition = "stroke-dashoffset 1.6s cubic-bezier(.5,0,.2,1)";
+    path.style.strokeDashoffset = 0;
+  }
+
+  /* ---------- Fig 1: payoff ---------- */
+  builders.payoff = function () {
+    const W = 960, H = 380, m = { l: 56, r: 24, t: 26, b: 42 };
+    const box = document.getElementById("payoff");
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Payoff at expiry of the 160/210 call vertical" }, box);
+    const debit = 4528, kl = 160, ks = 210, spot = 210.96, be = kl + debit / 100;
+    const pnl = S => Math.min(Math.max(S - kl, 0), ks - kl) * 100 - debit;
+    const x = S => m.l + (S - 140) / (240 - 140) * (W - m.l - m.r);
+    const y = v => m.t + (5200 - v) / (5200 + 5200) * (H - m.t - m.b);
+    /* grid + axes */
+    [-4000, -2000, 0, 2000, 4000].forEach(v => {
+      el("line", { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: v === 0 ? C.rule : C.grid, "stroke-width": 1 }, svg);
+      el("text", { x: m.l - 8, y: y(v) + 4, "text-anchor": "end" }, svg).textContent = v ? (v > 0 ? "+$" : "−$") + Math.abs(v / 1000) + "k" : "$0";
+    });
+    [140, 160, 180, 200, 220, 240].forEach(S => el("text", { x: x(S), y: H - m.b + 18, "text-anchor": "middle" }, svg).textContent = "$" + S);
+    el("text", { x: W - m.r, y: H - m.b + 34, "text-anchor": "end", "font-size": 11 }, svg).textContent = "NVDA at expiry";
+    /* loss / gain tint */
+    el("path", { d: `M${x(140)},${y(0)} L${x(be)},${y(0)} L${x(be)},${y(pnl(be))} L${x(160)},${y(pnl(160))} L${x(140)},${y(pnl(140))} Z`, fill: C.red, opacity: .07 }, svg);
+    /* payoff line */
+    const line = el("path", { d: `M${x(140)},${y(-debit)} L${x(kl)},${y(-debit)} L${x(ks)},${y(pnl(ks))} L${x(240)},${y(pnl(240))}`, fill: "none", stroke: C.blue, "stroke-width": 2.5, "stroke-linejoin": "round" }, svg);
+    drawIn(line);
+    /* markers */
+    const mark = (S, label, dy, anchor, color) => {
+      el("line", { x1: x(S), x2: x(S), y1: m.t + 4, y2: H - m.b, stroke: color || C.rule, "stroke-width": 1, "stroke-dasharray": "3 4" }, svg);
+      const t = el("text", { x: x(S) + (anchor === "end" ? -7 : 7), y: m.t + dy, "text-anchor": anchor || "start", "font-size": 11.5, fill: color || C.ink2 }, svg);
+      t.textContent = label;
+    };
+    mark(be, "breakeven $205.28 · −2.7%", 14, "end", C.redT);
+    mark(spot, "spot $210.96", 32, "start", C.ink3);
+    el("text", { x: x(228), y: y(472) - 10, "text-anchor": "middle", class: "dlabel", fill: C.blueT }, svg).textContent = "max +$472 · +10.4%";
+    el("text", { x: x(147), y: y(-debit) - 10, "text-anchor": "start", class: "dlabel", fill: C.redT }, svg).textContent = "−$4,528 · −100%";
+    /* hover */
+    const cross = el("line", { y1: m.t, y2: H - m.b, stroke: C.ink3, "stroke-width": 1, opacity: 0 }, svg);
+    const dot = el("circle", { r: 4.5, fill: C.blue, stroke: "#faf8f3", "stroke-width": 2, opacity: 0 }, svg);
+    svg.addEventListener("pointermove", ev => {
+      const r = svg.getBoundingClientRect(), S = 140 + (ev.clientX - r.left) / r.width * 100;
+      if (S < 140 || S > 240) return;
+      const v = pnl(S), px = x(S) * r.width / W, py = y(v);
+      cross.setAttribute("x1", x(S)); cross.setAttribute("x2", x(S)); cross.setAttribute("opacity", .5);
+      dot.setAttribute("cx", x(S)); dot.setAttribute("cy", py); dot.setAttribute("opacity", 1);
+      showTip(`<b>NVDA $${S.toFixed(0)}</b> (${pct(S / spot - 1, true)})<div class="trow"><span>P&amp;L</span><b>${v < 0 ? "−" : "+"}$${Math.abs(v).toFixed(0)}</b></div><div class="trow"><span>return</span><b>${pct(v / debit, true)}</b></div>`, ev.clientX, r.top + py * r.height / H);
+    });
+    svg.addEventListener("pointerleave", () => { cross.setAttribute("opacity", 0); dot.setAttribute("opacity", 0); hideTip(); });
+  };
+
+  /* ---------- cycle strip ---------- */
+  (function () {
+    const led = D.nvda.ledger_allin, eqs = D.nvda.allin;   // eqs[0] = $100k start
+    const box = document.getElementById("cyclestrip");
+    const mo = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const fd = s => { const d = pd(s); return mo[d.getMonth()] + " " + d.getDate(); };
+    led.forEach((c, i) => {
+      const prev = eqs[i].v, now = eqs[i + 1].v, r = now / prev - 1;
+      const div = document.createElement("div");
+      div.innerHTML = `<div class="cdate num">${fd(c.entry)} → ${fd(c.expiry)}</div>
+        <div class="cret num ${r < 0 ? "down" : "up"}">${r <= -0.995 ? "−100%" : pct(r, true)}</div>
+        <div class="ceq num">${fmt$(prev)} → ${now < 100 ? "$15" : fmt$(now)}</div>`;
+      box.appendChild(div);
+    });
+  })();
+
+  /* ---------- Fig 2: NVDA equity, log ---------- */
+  builders.eqchart = function () {
+    const W = 960, H = 480, m = { l: 54, r: 118, t: 18, b: 40 };
+    const box = document.getElementById("eqchart");
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "NVDA equity curves 2020 to 2025, log scale" }, box);
+    const t0 = pd("2020-01-01").getTime(), t1 = pd("2026-01-15").getTime();
+    const x = d => m.l + (pd(d).getTime() - t0) / (t1 - t0) * (W - m.l - m.r);
+    const lo = Math.log10(8), hi = Math.log10(4e6);
+    const y = v => m.t + (1 - (Math.log10(Math.max(v, 8)) - lo) / (hi - lo)) * (H - m.t - m.b);
+    [10, 100, 1e3, 1e4, 1e5, 1e6].forEach(v => {
+      el("line", { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: C.grid }, svg);
+      el("text", { x: m.l - 8, y: y(v) + 4, "text-anchor": "end" }, svg).textContent = fmt$(v);
+    });
+    for (let yr = 2020; yr <= 2026; yr++) el("text", { x: x(yr + "-01-01"), y: H - m.b + 20, "text-anchor": "middle" }, svg).textContent = yr;
+    el("line", { x1: m.l, x2: W - m.r, y1: y(1e5), y2: y(1e5), stroke: C.rule, "stroke-dasharray": "2 4" }, svg);
+    el("text", { x: W - m.r - 4, y: y(1e5) - 6, "text-anchor": "end", "font-size": 10.5 }, svg).textContent = "starting $100k";
+
+    const path = (pts, color, wdt) => {
+      const d = pts.map((p, i) => (i ? "L" : "M") + x(p.d).toFixed(1) + "," + y(p.v).toFixed(1)).join("");
+      return el("path", { d, fill: "none", stroke: color, "stroke-width": wdt || 2, "stroke-linejoin": "round" }, svg);
+    };
+    const bench = path(D.nvda.bench, C.ink3), sized = path(D.nvda.sized, C.blue), allin = path(D.nvda.allin, C.red, 2.5);
+    [bench, sized, allin].forEach(drawIn);
+
+    /* end labels */
+    const endL = (pts, txt, color, dy) => {
+      const p = pts[pts.length - 1];
+      const t = el("text", { x: x(p.d) + 8, y: y(p.v) + (dy || 4), class: "dlabel", fill: color }, svg); t.textContent = txt;
+    };
+    const bl = D.nvda.bench[D.nvda.bench.length - 1], sl = D.nvda.sized[D.nvda.sized.length - 1];
+    endL(D.nvda.bench, "buy & hold " + fmt$(bl.v), C.ink2);
+    endL(D.nvda.sized, "25% sizing " + fmt$(sl.v), C.blueT, 14);
+    const ap = D.nvda.allin[D.nvda.allin.length - 1];
+    el("circle", { cx: x(ap.d), cy: y(ap.v), r: 4.5, fill: C.red, stroke: "#faf8f3", "stroke-width": 2 }, svg);
+    const at = el("text", { x: x(ap.d) + 10, y: y(ap.v) + 4, class: "dlabel", fill: C.redT }, svg);
+    at.textContent = "all-in: $15 · Mar 20, 2020";
+
+    /* crosshair */
+    const cross = el("line", { y1: m.t, y2: H - m.b, stroke: C.ink3, "stroke-width": 1, opacity: 0 }, svg);
+    const dots = [C.ink3, C.blue, C.red].map(c => el("circle", { r: 4, fill: c, stroke: "#faf8f3", "stroke-width": 2, opacity: 0 }, svg));
+    const series = [["Buy & hold", D.nvda.bench], ["25% sizing", D.nvda.sized], ["All-in", D.nvda.allin]];
+    svg.addEventListener("pointermove", ev => {
+      const r = svg.getBoundingClientRect(), t = t0 + ((ev.clientX - r.left) / r.width * W - m.l) / (W - m.l - m.r) * (t1 - t0);
+      if (t < t0 || t > t1) return hideTip();
+      cross.setAttribute("opacity", .4);
+      let html = `<b>${new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</b>`, cx = null;
+      series.forEach(([name, pts], i) => {
+        let best = null, bd = Infinity;
+        pts.forEach(p => { const dd = Math.abs(pd(p.d).getTime() - t); if (dd < bd) { bd = dd; best = p; } });
+        if (!best || bd > 45 * 864e5) { dots[i].setAttribute("opacity", 0); return; }
+        cx = cx === null ? x(best.d) : cx;
+        dots[i].setAttribute("cx", x(best.d)); dots[i].setAttribute("cy", y(best.v)); dots[i].setAttribute("opacity", 1);
+        html += `<div class="trow"><span>${name}</span><b>${fmt$(best.v)}</b></div>`;
+      });
+      if (cx !== null) { cross.setAttribute("x1", cx); cross.setAttribute("x2", cx); }
+      showTip(html, ev.clientX, ev.clientY);
+    });
+    svg.addEventListener("pointerleave", () => { cross.setAttribute("opacity", 0); dots.forEach(d => d.setAttribute("opacity", 0)); hideTip(); });
+
+    document.getElementById("eqlegend").innerHTML =
+      `<span><span class="sw" style="background:${C.red}"></span><b>All-in (as pitched)</b></span>
+       <span><span class="sw" style="background:${C.blue}"></span><b>25% of equity per cycle</b></span>
+       <span><span class="sw" style="background:${C.ink3}"></span><b>Buy &amp; hold</b></span>`;
+  };
+
+  /* ---------- Fig 3: dumbbell ---------- */
+  builders.dumbbell = function () {
+    const rows = [...D.symbols].sort((a, b) => b.bench_cagr - a.bench_cagr);
+    const W = 960, rh = 30, m = { l: 64, r: 30, t: 30, b: 34 }, H = m.t + rows.length * rh + m.b;
+    const box = document.getElementById("dumbbell");
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Harvest at 25% sizing versus buy and hold CAGR for 16 names" }, box);
+    const lo = -0.22, hi = 0.85;
+    const x = v => m.l + (v - lo) / (hi - lo) * (W - m.l - m.r);
+    [-0.2, 0, 0.2, 0.4, 0.6, 0.8].forEach(v => {
+      el("line", { x1: x(v), x2: x(v), y1: m.t - 6, y2: H - m.b, stroke: v === 0 ? C.rule : C.grid }, svg);
+      el("text", { x: x(v), y: H - m.b + 18, "text-anchor": "middle" }, svg).textContent = pct(v, v > 0).replace(".0", "");
+    });
+    el("text", { x: W - m.r, y: H - m.b + 34, "text-anchor": "end", "font-size": 11 }, svg).textContent = "CAGR, 2020–2025";
+    rows.forEach((s, i) => {
+      const yy = m.t + i * rh + rh / 2;
+      const g = el("g", { style: "cursor:default" }, svg);
+      el("rect", { x: 0, y: yy - rh / 2, width: W, height: rh, fill: "transparent" }, g);
+      const lab = el("text", { x: m.l - 10, y: yy + 4, "text-anchor": "end", "font-size": 12, "font-weight": 600, fill: s.allin_ruined ? C.redT : C.ink2 }, g);
+      lab.textContent = s.sym + (s.allin_ruined ? " †" : "");
+      el("line", { x1: x(s.sized_cagr), x2: x(s.bench_cagr), y1: yy, y2: yy, stroke: C.rule, "stroke-width": 1.5 }, g);
+      el("circle", { cx: x(s.bench_cagr), cy: yy, r: 5.5, fill: C.ink3, stroke: "#faf8f3", "stroke-width": 2 }, g);
+      el("circle", { cx: x(s.sized_cagr), cy: yy, r: 5.5, fill: C.blue, stroke: "#faf8f3", "stroke-width": 2 }, g);
+      g.addEventListener("pointermove", ev => showTip(
+        `<b>${s.sym}</b>${s.allin_ruined ? ` · all-in ruined ${s.allin_ruin_date}` : " · all-in survived"}
+         <div class="trow"><span>harvest 25%</span><b>${pct(s.sized_cagr, true)}</b></div>
+         <div class="trow"><span>buy &amp; hold</span><b>${pct(s.bench_cagr, true)}</b></div>
+         <div class="trow"><span>harvest max DD</span><b>${pct(s.sized_dd)}</b></div>`, ev.clientX, ev.clientY));
+      g.addEventListener("pointerleave", hideTip);
+    });
+    el("text", { x: x(rows[0].bench_cagr), y: m.t - 10, "text-anchor": "middle", "font-size": 11, fill: C.ink3 }, svg).textContent = "† = ruined at full sizing";
+  };
+
+  /* ---------- Table 1: autopsy ---------- */
+  (function () {
+    const t = document.getElementById("autopsy");
+    const order = [...D.symbols].sort((a, b) => {
+      if (a.allin_ruined !== b.allin_ruined) return a.allin_ruined ? -1 : 1;
+      if (a.allin_ruined) return a.allin_ruin_date < b.allin_ruin_date ? -1 : 1;
+      return a.allin_dd - b.allin_dd;
+    });
+    t.innerHTML = `<thead><tr><th>Symbol</th><th>All-in outcome</th><th class="r">All-in max DD</th><th class="r">Worst cycle (25%)</th><th class="r">25% CAGR</th><th class="r">Buy &amp; hold</th></tr></thead><tbody>` +
+      order.map(s => `<tr><td><strong>${s.sym}</strong></td>
+        <td>${s.allin_ruined ? `<span class="ruin">Ruined ${s.allin_ruin_date}</span>` : `<span class="ok">Survived</span>`}</td>
+        <td class="r">${pct(s.allin_dd)}</td>
+        <td class="r">${pct(s.worst_cycle)}</td>
+        <td class="r">${pct(s.sized_cagr, true)}</td>
+        <td class="r">${pct(s.bench_cagr, true)}</td></tr>`).join("") + "</tbody>";
+  })();
+
+  /* ---------- Fig 4: IS/OOS scatter ---------- */
+  builders.scatter = function () {
+    const W = 960, H = 520, m = { l: 64, r: 26, t: 30, b: 52 }, GUT = 92, GAP = 26;
+    const box = document.getElementById("scatter");
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "In-sample versus out-of-sample median CAGR for 108 configurations" }, box);
+    const live = D.sweep.filter(r => r.is_med > -0.999);
+    const oosLive = D.sweep.filter(r => r.oos_med > -0.999).map(r => r.oos_med);
+    const xlo = Math.min(...live.map(r => r.is_med)) - 0.03, xhi = Math.max(...live.map(r => r.is_med)) + 0.03;
+    const ylo = Math.min(-0.45, Math.min(...oosLive)) - 0.03, yhi = 0.47;
+    const yRuin = H - m.b - 14;                       /* bottom gutter line for OOS −100% */
+    const x = v => v <= -0.999 ? m.l + GUT / 2 : m.l + GUT + GAP + (v - xlo) / (xhi - xlo) * (W - m.l - m.r - GUT - GAP);
+    const y = v => v <= -0.999 ? yRuin : m.t + (yhi - v) / (yhi - ylo) * (yRuin - 26 - m.t);
+    /* frame */
+    [-0.4, -0.2, 0, 0.2, 0.4].forEach(v => {
+      el("line", { x1: m.l, x2: W - m.r, y1: y(v), y2: y(v), stroke: v === 0 ? C.rule : C.grid }, svg);
+      el("text", { x: m.l - 8, y: y(v) + 4, "text-anchor": "end" }, svg).textContent = pct(v, v > 0).replace(".0", "");
+    });
+    const xt = [];
+    for (let v = Math.ceil(xlo * 10) / 10; v <= xhi; v += 0.1) xt.push(Math.round(v * 10) / 10);
+    xt.forEach(v => {
+      el("line", { x1: x(v), x2: x(v), y1: m.t, y2: H - m.b, stroke: v === 0 ? C.rule : C.grid }, svg);
+      el("text", { x: x(v), y: H - m.b + 18, "text-anchor": "middle" }, svg).textContent = pct(v, v > 0).replace(".0", "");
+    });
+    /* ruin gutters */
+    el("rect", { x: m.l, y: m.t, width: GUT, height: H - m.t - m.b, fill: C.red, opacity: .05 }, svg);
+    el("text", { x: m.l + GUT / 2, y: H - m.b + 18, "text-anchor": "middle", fill: C.redT, "font-size": 11 }, svg).textContent = "−100%";
+    const gl = el("text", { "text-anchor": "middle", fill: C.redT, "font-size": 11, x: 0, y: 4,
+      transform: `translate(${m.l + 16} ${(m.t + H - m.b) / 2}) rotate(-90)` }, svg);
+    gl.textContent = "ruined in-sample · 39 configs";
+    [0, 6].forEach(o => el("line", { x1: m.l + GUT + GAP / 2 - 4 + o, x2: m.l + GUT + GAP / 2 - 10 + o, y1: H - m.b - 5, y2: H - m.b + 5, stroke: C.ink3, "stroke-width": 1.5 }, svg));
+    el("text", { x: m.l - 8, y: yRuin + 4, "text-anchor": "end", fill: C.redT }, svg).textContent = "−100%";
+    [0, 6].forEach(o => el("line", { x1: m.l - 4, x2: m.l + 4, y1: yRuin - 16 + o, y2: yRuin - 22 + o, stroke: C.ink3, "stroke-width": 1.5 }, svg));
+    /* bench line */
+    el("line", { x1: m.l, x2: W - m.r, y1: y(0.29), y2: y(0.29), stroke: C.ink2, "stroke-dasharray": "5 5" }, svg);
+    el("text", { x: W - m.r, y: y(0.29) - 7, "text-anchor": "end", "font-size": 11.5, fill: C.ink2 }, svg).textContent = "buy & hold out-of-sample median +29%";
+    el("text", { x: W - m.r, y: H - m.b + 36, "text-anchor": "end", "font-size": 11 }, svg).textContent = "in-sample median CAGR (2020–22) →";
+    el("text", { x: m.l, y: m.t - 8, "font-size": 11 }, svg).textContent = "↑ out-of-sample median CAGR (2023–25)";
+
+    const isWin = live.reduce((a, b) => a.is_med > b.is_med ? a : b);
+    const seen = {};
+    D.sweep.forEach((r, i) => {
+      const gx = r.is_med <= -0.999;
+      let px = x(r.is_med), py = y(r.oos_med);
+      if (gx) { const n = (seen.g = (seen.g || 0) + 1); px = m.l + 32 + (n * 37) % (GUT - 44); }
+      const isP = r.moneyness === 0.76 && r.short_m === 1 && r.dte_lo === 10 && r.alloc === 1 && r.filter === "none";
+      const isW = r === isWin;
+      let node;
+      if (isP) {
+        node = el("path", { d: starPath(px, py, 9), fill: C.red, stroke: "#faf8f3", "stroke-width": 1.5 }, svg);
+        el("text", { x: px + 12, y: py + 4, class: "dlabel", fill: C.redT }, svg).textContent = "as pitched";
+      } else {
+        node = el("circle", { cx: px, cy: py, r: 4.5, fill: isW ? C.aqua : C.blue, opacity: isW ? 1 : .55, stroke: isW ? C.ink : "#faf8f3", "stroke-width": isW ? 1.5 : 1 }, svg);
+        if (isW) el("text", { x: px - 2, y: py + 22, class: "dlabel", "text-anchor": "end", fill: "#0b7a54" }, svg).textContent = "best in-sample pick";
+      }
+      node.style.cursor = "default";
+      node.addEventListener("pointermove", ev => showTip(
+        `<b>${Math.round(r.moneyness * 100)}% long · ${r.short_m > 1 ? "105% short" : "ATM short"} · ${r.dte_lo === 10 ? "~14d" : "~28d"} · ${Math.round(r.alloc * 100)}% size</b>
+         <div>filter: ${r.filter}</div>
+         <div class="trow"><span>in-sample</span><b>${r.is_med <= -0.999 ? "ruined" : pct(r.is_med, true)}</b></div>
+         <div class="trow"><span>out-of-sample</span><b>${r.oos_med <= -0.999 ? "ruined" : pct(r.oos_med, true)}</b></div>
+         <div class="trow"><span>ruins IS / OOS</span><b>${r.is_ruins} / ${r.oos_ruins}</b></div>`, ev.clientX, ev.clientY));
+      node.addEventListener("pointerleave", hideTip);
+      if (!reduced) { node.style.opacity = 0; node.style.transition = "opacity .5s ease-out " + (i * 6) + "ms"; requestAnimationFrame(() => requestAnimationFrame(() => node.style.opacity = isP || isW ? 1 : (node.tagName === "circle" && !isW ? .55 : 1))); }
+    });
+    function starPath(cx, cy, r) {
+      let d = "";
+      for (let i = 0; i < 10; i++) {
+        const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .45 : r;
+        d += (i ? "L" : "M") + (cx + rr * Math.cos(a)).toFixed(1) + "," + (cy + rr * Math.sin(a)).toFixed(1);
+      }
+      return d + "Z";
+    }
+  };
+
+  /* lazy-build charts when near viewport */
+  ["payoff", "eqchart", "dumbbell", "scatter"].forEach(id => cio.observe(document.getElementById(id)));
+})();
+</script>
+</body></html>
