@@ -1,14 +1,11 @@
 # Covered-call rolling on real open interest
 
-A six-year backtest of covered-call premium harvesting with rolling:
+Own shares, sell the monthly call where open interest is highest (including
+in-the-money magnets), and roll up-and-out for a net credit after run-ups.
+ITM short calls buffer downside; upside remains capped.
 
-1. Own the shares
-2. Sell the monthly call where open interest is highest
-3. At expiry, keep dead premium or roll up-and-out for a net credit
-4. Reinvest premium into more lots
+Sixteen large caps, 2020–2025, real OCC open interest (ThetaData).
 
-Sixteen large caps, 2020–2025, real OCC open interest (ThetaData) for every strike pick.
+Live: https://elliottshort.github.io/ten-percent-week/
 
-Live page: https://elliottshort.github.io/ten-percent-week/
-
-Engine and drivers live in the companion `buywrite-backtest` repo (`wheel_bt/harvest.py`, `run_harvest.py`).
+Engine: companion `buywrite-backtest` repo.
