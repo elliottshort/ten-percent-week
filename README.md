@@ -1,14 +1,17 @@
-# Covered-call rolling on real open interest
+# Trend-gated selective harvest vs buy-and-hold
 
-Own shares, sell the monthly call where open interest is highest (including
-in-the-money magnets), and roll **up-and-out** for a net credit after run-ups
-(never roll the strike down). ITM short calls buffer downside; upside remains capped.
+Walk-forward covered-call overwrite on 16 large caps (2020–2025), compared to
+fair continuous buy-and-hold with daily dividend reinvestment.
 
-Sixteen large caps, 2020–2025, real OCC open interest (ThetaData).
+**Policy (TGSH, IS-frozen):** write only when name 63d return ≤ −10% and the
+equal-weight market 63d ≤ 0; coverage scales with crash depth; OTM band;
+jump-to-expiry; ITM close-hold when the gate clears.
 
-**Current page (WIP engine):** residual cash reinvested as fractional equity;
-short calls still size in whole lots. Median strategy CAGR **+15.3%** vs B&H
-**+18.6%**; NVDA **+52.0%** vs **+77.4%**; **~37%** ITM-at-write; **141** forced
-assignments; **7 of 16** beat hold.
+**Full-sample headlines:** median TGSH CAGR **+17.6%** vs fair buy-and-hold
+**+17.1%** (always-write baseline **+15.2%**); **11 of 16** names beat hold;
+equal-weight basket TGSH **+27.9%** vs B&H **+26.9%**. OOS (2023–end, fresh
+$100k): median **+29.9%** vs **+29.2%**; **10 of 16** beat.
+
+Source study & engine: [buywrite-backtest](https://github.com/elliottshort/buywrite-backtest).
 
 Live: https://elliottshort.github.io/ten-percent-week/
