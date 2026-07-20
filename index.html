@@ -254,10 +254,10 @@
   <h1 class="reveal" style="--d:.08s">The <em>roll-forever</em> covered call, tested</h1>
   <p class="standfirst reveal" style="--d:.16s">Own the shares. Sell the monthly call where open interest is highest &mdash; including when that magnet sits <em>in the money</em>. If a run-up puts the short ITM, buy it back and roll up and out so time value funds a higher strike. Bank the premium into more shares. Six years, sixteen large caps, real OCC open interest on every write.</p>
   <div class="verdict reveal" style="--d:.26s" id="hero-verdict">
-    <div><span class="n good num" id="v-prem">$1.54M</span><small>gross premium collected on NVDA alone over six years</small></div>
-    <div><span class="n mixed num" id="v-nvda">+32.7% vs +77.4%</span><small>NVDA strategy CAGR vs buy &amp; hold &mdash; the premium machine is real; so is the cap</small></div>
+    <div><span class="n good num" id="v-prem">$1.46M</span><small>gross premium collected on NVDA alone over six years</small></div>
+    <div><span class="n mixed num" id="v-nvda">+37.1% vs +77.4%</span><small>NVDA strategy CAGR vs buy &amp; hold &mdash; the premium machine is real; so is the cap</small></div>
     <div><span class="n good num" id="v-beat">6 of 16</span><small>names where rolling beat holding (often flat/down names, plus a few modest risers)</small></div>
-    <div><span class="n mixed num" id="v-itm">~40%</span><small>of writes were ITM at entry when max OI sat below spot (downside buffer from short premium)</small></div>
+    <div><span class="n mixed num" id="v-itm">~37%</span><small>of writes were ITM at entry when max OI sat below spot (downside buffer from short premium)</small></div>
   </div>
 </section>
 
@@ -405,7 +405,7 @@
     <span class="secno" aria-hidden="true">03</span>
     <h2 class="reveal">NVDA: premium compounds, the cap compounds faster</h2>
     <p class="dek reveal">$100,000 start, mid fills, T-bill interest on idle cash, premium reinvested into more lots. Same marks as a dividend-reinvested buy-and-hold.</p>
-    <p class="reveal">NVDA is the notes&rsquo; worked example, so it gets the full equity path. With ITM OI allowed, the engine collected <span class="num" id="nvda-prem">$1.54M</span> of gross call premium, <span class="num" id="nvda-win">87%</span> of cycles were profitable, and about <span class="num" id="nvda-itm">41%</span> of writes started ITM when the OI magnet sat below spot. 2022 still hurt (~&minus;33%). Ending equity: <span class="num" id="nvda-end">$536k</span> with reinvestment vs <span class="num">$3.00M</span> for buy and hold. Forced assignments still land in the months that made holding rich &mdash; rolling up-and-out only works when next-month premium covers the buyback.</p>
+    <p class="reveal">NVDA is the notes&rsquo; worked example, so it gets the full equity path. With ITM OI allowed, the engine collected <span class="num" id="nvda-prem">$1.46M</span> of gross call premium, <span class="num" id="nvda-win">86.6%</span> of cycles were profitable, and about <span class="num" id="nvda-itm">35.4%</span> of writes started ITM when the OI magnet sat below spot. 2022 still hurt (~&minus;33%). Ending equity: <span class="num" id="nvda-end">$651k</span> with reinvestment vs <span class="num">$3.00M</span> for buy and hold. Forced assignments still land in the months that made holding rich &mdash; rolling up-and-out only works when next-month premium covers the buyback.</p>
   </div>
 
   <figure class="reveal" style="padding-inline: clamp(20px, 4vw, 32px);">
@@ -422,7 +422,7 @@
     <span class="secno" aria-hidden="true">04</span>
     <h2 class="reveal">Sixteen names, same rules</h2>
     <p class="dek reveal">No parameter tuning per stock. Open interest picks the strike; the roll rule is identical everywhere.</p>
-    <p class="reveal">Median CAGR across the basket: <span class="num" id="med-cagr">+13.2%</span> for the covered-call roll against <span class="num" id="med-bench">+18.6%</span> for buy and hold. Allowing ITM OI writes raises collected premium and softens some drawdowns (short-call buffer), but the upside cap remains. Names that beat holding are still mostly the flat or declining stocks &mdash; plus a few modest risers where the extra ITM premium helped. Forced assignments: <span class="num" id="tot-assign">145</span> across the sixteen.</p>
+    <p class="reveal">Median CAGR across the basket: <span class="num" id="med-cagr">+12.6%</span> for the covered-call roll against <span class="num" id="med-bench">+18.6%</span> for buy and hold. Allowing ITM OI writes raises collected premium and softens some drawdowns (short-call buffer), but the upside cap remains. Names that beat holding are still mostly the flat or declining stocks &mdash; plus a few modest risers where the extra ITM premium helped. Forced assignments: <span class="num" id="tot-assign">141</span> across the sixteen.</p>
   </div>
 
   <figure class="reveal" style="padding-inline: clamp(20px, 4vw, 32px);">
